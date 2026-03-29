@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -277,6 +278,18 @@
       localStorage.setItem('sansu_records', JSON.stringify(records));
     };
 
+    // まちがえた問題を保存する関数
+    const saveMistake = (type, problem) => {
+      const mistakes = JSON.parse(localStorage.getItem('sansu_mistakes') || '{}');
+      if (!mistakes[type]) mistakes[type] = {};
+      const key = `${problem.n1}_${problem.op}_${problem.n2}`;
+      if (!mistakes[type][key]) {
+        mistakes[type][key] = { n1: problem.n1, op: problem.op, n2: problem.n2, count: 0 };
+      }
+      mistakes[type][key].count += 1;
+      localStorage.setItem('sansu_mistakes', JSON.stringify(mistakes));
+    };
+
     // 1問分の問題生成関数
     const generateSingleProblem = (type, level) => {
       let n1, n2, ans;
@@ -356,9 +369,9 @@
         const n2Chars = String(n2).split('');
 
         return (
-          <div className="flex flex-col items-end w-full select-none pointer-events-none z-10 pt-6 md:pt-12 pr-2 sm:pr-4 md:pr-12">
+          <div className="flex flex-col items-start w-full select-none pointer-events-none z-10 pt-6 md:pt-12 pl-4 sm:pl-6 md:pl-12">
             <div className="flex items-end text-4xl sm:text-5xl md:text-7xl font-bold text-gray-800">
-              <div className="flex pb-[2px] md:pb-[3px] pr-1 md:pr-2">
+              <div className="flex pb-1 md:pb-2 pr-2 sm:pr-3 md:pr-4">
                 {n2Chars.map((c, i) => (
                   <div key={i} className="w-6 sm:w-8 md:w-12 flex justify-center leading-none">
                     {c}
@@ -366,7 +379,7 @@
                 ))}
               </div>
               
-              <div className="relative border-t-[3px] md:border-t-[4px] border-gray-800 pt-3 md:pt-4 px-2">
+              <div className="relative border-t-[3px] md:border-t-[4px] border-gray-800 pt-4 sm:pt-5 md:pt-6 pl-3 sm:pl-4 md:pl-6 pr-2 sm:pr-4">
                 <svg 
                   className="absolute top-[-3px] left-0 h-[calc(100%+3px)] w-6 -translate-x-full overflow-visible md:hidden"
                   viewBox="0 0 20 100" 
@@ -628,7 +641,14 @@
       }, []);
 
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-amber-50 p-6">
+        <div className="relative flex flex-col items-center justify-center min-h-screen bg-amber-50 p-6">
+          <button 
+            onClick={() => setView('records')}
+            className="absolute top-4 right-4 md:top-6 md:right-6 bg-amber-400 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-xl shadow-[0_4px_0_#d97706] active:shadow-[0_0px_0_#d97706] active:translate-y-[4px] flex items-center gap-2 transition-all z-10"
+          >
+            <Award className="w-5 h-5 inline-block" /> <span className="hidden sm:inline">あなたの記録</span><span className="sm:hidden">きろく</span>
+          </button>
+
           <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 border-amber-200">
             <div className="flex justify-center mb-4">
               <Award className="w-16 h-16 text-yellow-500" />
@@ -695,6 +715,201 @@
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-200 group-hover:text-purple-100 text-3xl">÷</span>
               </button>
             </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ---------------------------------------------------------
+    // 記録一覧画面
+    // ---------------------------------------------------------
+    const RecordsView = ({ setView }) => {
+      const [parsedRecords, setParsedRecords] = useState([]);
+      const [mistakes, setMistakes] = useState({});
+      const [showConfirmClear, setShowConfirmClear] = useState(false);
+
+      useEffect(() => {
+        const raw = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+        const types = [
+          { key: 'add', label: 'たしざん', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+          { key: 'sub', label: 'ひき算', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+          { key: 'mul', label: 'かけ算', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
+          { key: 'div', label: 'わり算', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' }
+        ];
+
+        const list = [];
+
+        types.forEach(t => {
+          if (raw[t.key]) {
+            Object.keys(raw[t.key]).forEach(level => {
+              const lvData = raw[t.key][level];
+              const totalPoints = [
+                'count_10_points', 'count_20_points', 'count_30_points',
+                'time_60_points', 'time_120_points', 'time_180_points'
+              ].reduce((sum, k) => sum + (lvData[k] || 0), 0);
+
+              // 記録があるかチェック（ポイント以外のキーが1つ以上あるか、またはポイントがあるか）
+              if (Object.keys(lvData).length > 0) {
+                list.push({
+                  typeLabel: t.label,
+                  level: level,
+                  color: t.color,
+                  bg: t.bg,
+                  border: t.border,
+                  totalPoints,
+                  records: lvData
+                });
+              }
+            });
+          }
+        });
+
+        setParsedRecords(list);
+
+        const rawMistakes = JSON.parse(localStorage.getItem('sansu_mistakes') || '{}');
+        setMistakes(rawMistakes);
+      }, []);
+
+      const formatTime = (sec) => `${Math.floor(sec / 60)}分${(sec % 60).toString().padStart(2, '0')}秒`;
+
+      const handleClearMistake = (type, key) => {
+        const newMistakes = { ...mistakes };
+        if (newMistakes[type] && newMistakes[type][key]) {
+          delete newMistakes[type][key];
+          if (Object.keys(newMistakes[type]).length === 0) {
+            delete newMistakes[type];
+          }
+        }
+        setMistakes(newMistakes);
+        localStorage.setItem('sansu_mistakes', JSON.stringify(newMistakes));
+      };
+
+      const handleClearAllMistakes = () => {
+        setMistakes({});
+        localStorage.removeItem('sansu_mistakes');
+      };
+
+      const hasMistakes = Object.keys(mistakes).some(type => Object.keys(mistakes[type]).length > 0);
+
+      return (
+        <div className="flex flex-col items-center min-h-screen bg-amber-50 p-4 md:p-8">
+          {showConfirmClear && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-white p-6 rounded-3xl shadow-xl max-w-sm w-full mx-4 text-center border-4 border-amber-200">
+                <p className="text-xl md:text-2xl font-bold mb-6 text-gray-800">まちがえた きろくを<br/>すべて けしますか？</p>
+                <div className="flex justify-center gap-4">
+                  <button onClick={() => setShowConfirmClear(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-xl transition-colors">やめる</button>
+                  <button onClick={() => { handleClearAllMistakes(); setShowConfirmClear(false); }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-sm">けす</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="w-full max-w-3xl bg-white p-6 md:p-8 rounded-3xl shadow-xl border-4 border-amber-200">
+            <div className="flex justify-between items-center mb-6">
+              <button 
+                onClick={() => setView('home')}
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 inline-block" /> もどる
+              </button>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-amber-700 pr-4 md:pr-8 flex items-center gap-2">
+                <Award className="w-6 h-6 md:w-8 md:h-8 inline-block" /> あなたの記録
+              </h2>
+            </div>
+
+            {parsedRecords.length === 0 && !hasMistakes ? (
+              <div className="text-center py-12">
+                <p className="text-xl text-gray-500 font-bold mb-4">まだ きろく がないよ。</p>
+                <p className="text-lg text-gray-400">ドリルに ちょうせん してみよう！</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                {parsedRecords.map((item, idx) => (
+                  <div key={idx} className={`${item.bg} border-2 ${item.border} rounded-2xl p-4 md:p-5 shadow-sm`}>
+                    <div className="flex justify-between items-end mb-3 border-b-2 border-white pb-2">
+                      <h3 className={`text-xl font-extrabold ${item.color}`}>
+                        {item.typeLabel} - Lv.{item.level}
+                      </h3>
+                      <div className="font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-lg text-sm flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-current inline-block" /> {item.totalPoints} pt
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-sm md:text-base font-medium text-gray-700">
+                      {item.records['count_10'] !== undefined && (
+                        <div className="flex justify-between"><span>10問コース:</span> <span className="font-bold">{formatTime(item.records['count_10'])}</span></div>
+                      )}
+                      {item.records['count_20'] !== undefined && (
+                        <div className="flex justify-between"><span>20問コース:</span> <span className="font-bold">{formatTime(item.records['count_20'])}</span></div>
+                      )}
+                      {item.records['count_30'] !== undefined && (
+                        <div className="flex justify-between"><span>30問コース:</span> <span className="font-bold">{formatTime(item.records['count_30'])}</span></div>
+                      )}
+                      {item.records['time_60'] !== undefined && (
+                        <div className="flex justify-between"><span>1分間コース:</span> <span className="font-bold">{item.records['time_60']} 問</span></div>
+                      )}
+                      {item.records['time_120'] !== undefined && (
+                        <div className="flex justify-between"><span>2分間コース:</span> <span className="font-bold">{item.records['time_120']} 問</span></div>
+                      )}
+                      {item.records['time_180'] !== undefined && (
+                        <div className="flex justify-between"><span>3分間コース:</span> <span className="font-bold">{item.records['time_180']} 問</span></div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {hasMistakes && (
+              <div className="mt-12 animate-in fade-in duration-500">
+                <div className="flex justify-between items-center mb-6 border-t-4 border-dashed border-amber-100 pt-8">
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-red-600 flex items-center gap-2">
+                    <X className="w-6 h-6 md:w-8 md:h-8 inline-block bg-red-100 rounded-full p-1" strokeWidth={3} /> まちがえた もんだい
+                  </h2>
+                  <button 
+                    onClick={() => setShowConfirmClear(true)}
+                    className="text-sm bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2 px-4 rounded-lg flex items-center gap-1 transition-colors shadow-sm"
+                  >
+                    <X className="w-4 h-4 inline-block" /> すべてけす
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                  {Object.keys(mistakes).map(type => {
+                    const typeMistakes = mistakes[type];
+                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算' }[type];
+                    
+                    return Object.keys(typeMistakes).map(key => {
+                      const m = typeMistakes[key];
+                      return (
+                        <div key={`${type}-${key}`} className="bg-white border-2 border-red-200 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="text-xs md:text-sm font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-1 rounded-md whitespace-nowrap">{typeLabel}</div>
+                            <div className="text-xl md:text-2xl font-bold text-gray-800 tracking-widest whitespace-nowrap">
+                              {m.n1} {m.op} {m.n2}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="text-sm font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
+                              {m.count}回
+                            </div>
+                            <button 
+                              onClick={() => handleClearMistake(type, key)}
+                              className="bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 p-2 rounded-xl transition-colors shrink-0"
+                              title="1つ けす"
+                            >
+                              <X className="w-5 h-5 inline-block" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })}
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       );
@@ -940,8 +1155,8 @@
 
       const handleGetHint = async () => {
         setIsHintLoading(true);
-        const sysPrompt = "あなたは優しくて面白い、小学生向けの算数の先生です。ひらがなと簡単な漢字（小学3年生まで）を使って、フレンドリーに話してください。答えを直接教えるのではなく、考え方のヒントやコツを50文字以内で短く出してください。";
-        const pText = `計算問題「${problem.n1} ${problem.op} ${problem.n2}」の解き方のヒントを教えてください。`;
+        const sysPrompt = "小学生向けの算数の先生として、挨拶や余計な言葉は完全に省き、計算の解き方のヒントだけを必ず40文字以内で短く教えてください。ひらがなと簡単な漢字のみを使ってください。";
+        const pText = `「${problem.n1} ${problem.op} ${problem.n2}」のヒントは？`;
         
         const response = await fetchGeminiContent(pText, sysPrompt);
         setHint(response);
@@ -1102,6 +1317,7 @@
             }, 750);
           }
         } else {
+          saveMistake(type, problem);
           setStatus('wrong');
           setUserInput('');
           const newMistakes = mistakes + 1;
@@ -1460,6 +1676,7 @@
           {view === 'course' && <CourseView type={type} level={level} setView={setView} setCourse={setCourse} />}
           {view === 'quiz' && <QuizView type={type} level={level} course={course} setView={setView} setResult={setResult} />}
           {view === 'result' && <ResultView result={result} type={type} level={level} setView={setView} />}
+          {view === 'records' && <RecordsView setView={setView} />}
         </div>
       );
     }
