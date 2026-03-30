@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -295,37 +294,131 @@
       let n1, n2, ans;
       switch (type) {
         case 'add':
-          if (level === 1) { n1 = Math.floor(Math.random() * 9) + 1; n2 = Math.floor(Math.random() * 9) + 1; }
-          else if (level === 2) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 9) + 1; }
-          else if (level === 3) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 90) + 10; }
-          else if (level === 4) { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * 90) + 10; }
-          else { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * 900) + 100; }
+          if (level === 1) { 
+            n1 = Math.floor(Math.random() * 9) + 1; 
+            n2 = Math.floor(Math.random() * (10 - n1)) + 1; 
+          }
+          else if (level === 2) { 
+            n1 = Math.floor(Math.random() * 8) + 2; 
+            n2 = Math.floor(Math.random() * (9 - (11 - n1) + 1)) + (11 - n1); 
+          }
+          else if (level === 3) { 
+            n1 = Math.floor(Math.random() * 90) + 10; 
+            n2 = Math.floor(Math.random() * 9) + 1; 
+          }
+          else if (level === 4) { 
+            n1 = Math.floor(Math.random() * 90) + 10; 
+            n2 = Math.floor(Math.random() * 90) + 10; 
+          }
+          else { 
+            n1 = Math.floor(Math.random() * 900) + 100; 
+            n2 = Math.random() < 0.5 ? Math.floor(Math.random() * 90) + 10 : Math.floor(Math.random() * 900) + 100; 
+          }
           ans = n1 + n2;
           return { n1, n2, op: '+', ans };
         case 'sub':
-          if (level === 1) { n1 = Math.floor(Math.random() * 9) + 2; n2 = Math.floor(Math.random() * (n1 - 1)) + 1; }
-          else if (level === 2) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 9) + 1; }
-          else if (level === 3) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * (n1 - 1)) + 1; }
-          else if (level === 4) { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * 90) + 10; }
-          else { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * (n1 - 100)) + 100; }
+          if (level === 1) { 
+            n1 = Math.floor(Math.random() * 9) + 2; 
+            n2 = Math.floor(Math.random() * (n1 - 1)) + 1; 
+          }
+          else if (level === 2) { 
+            n1 = Math.floor(Math.random() * 10) + 11; 
+            n2 = Math.floor(Math.random() * 9) + 1; 
+          }
+          else if (level === 3) { 
+            n1 = Math.floor(Math.random() * 79) + 21; 
+            n2 = Math.floor(Math.random() * (n1 - 10)) + 10; 
+          }
+          else if (level === 4) { 
+            n1 = Math.floor(Math.random() * 900) + 100; 
+            n2 = Math.floor(Math.random() * 90) + 10; 
+          }
+          else { 
+            n1 = Math.floor(Math.random() * 900) + 100; 
+            n2 = Math.floor(Math.random() * (n1 - 100)) + 100; 
+          }
           ans = n1 - n2;
           return { n1, n2, op: '-', ans };
         case 'mul':
-          if (level === 1) { n1 = Math.floor(Math.random() * 5) + 1; n2 = Math.floor(Math.random() * 5) + 1; }
-          else if (level === 2) { n1 = Math.floor(Math.random() * 9) + 1; n2 = Math.floor(Math.random() * 9) + 1; }
-          else if (level === 3) { n1 = Math.floor(Math.random() * 10) + 10; n2 = Math.floor(Math.random() * 8) + 2; }
-          else if (level === 4) { n1 = Math.floor(Math.random() * 80) + 20; n2 = Math.floor(Math.random() * 8) + 2; }
-          else { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 90) + 10; }
+          if (level === 1) { 
+            n1 = Math.floor(Math.random() * 9) + 1; 
+            n2 = Math.floor(Math.random() * 9) + 1; 
+          }
+          else if (level === 2) { 
+            const r = Math.random();
+            if (r < 0.15) {
+              n1 = 0; n2 = Math.floor(Math.random() * 9) + 1;
+            } else if (r < 0.3) {
+              n1 = Math.floor(Math.random() * 9) + 1; n2 = 0;
+            } else {
+              n1 = Math.floor(Math.random() * 15) + 1;
+              n2 = Math.floor(Math.random() * 10) + 1;
+            }
+          }
+          else if (level === 3) { 
+            n1 = Math.floor(Math.random() * 84) + 16; 
+            n2 = Math.floor(Math.random() * 8) + 2; 
+          }
+          else if (level === 4) { 
+            n1 = Math.floor(Math.random() * 90) + 10; 
+            n2 = Math.floor(Math.random() * 90) + 10; 
+          }
+          else { 
+            n1 = Math.floor(Math.random() * 900) + 100; 
+            n2 = Math.floor(Math.random() * 90) + 10; 
+          }
           ans = n1 * n2;
           return { n1, n2, op: '×', ans };
         case 'div':
-          if (level === 1) { n2 = Math.floor(Math.random() * 5) + 1; ans = Math.floor(Math.random() * 5) + 1; }
-          else if (level === 2) { n2 = Math.floor(Math.random() * 9) + 1; ans = Math.floor(Math.random() * 9) + 1; }
-          else if (level === 3) { n2 = Math.floor(Math.random() * 8) + 2; ans = Math.floor(Math.random() * 41) + 10; }
-          else if (level === 4) { n2 = Math.floor(Math.random() * 8) + 2; ans = Math.floor(Math.random() * 89) + 11; }
-          else { n2 = Math.floor(Math.random() * 90) + 10; ans = Math.floor(Math.random() * 90) + 10; }
-          n1 = n2 * ans;
-          return { n1, n2, op: '÷', ans };
+          if (level === 1) { 
+            n2 = Math.floor(Math.random() * 9) + 1; 
+            const maxAns = Math.floor(99 / n2);
+            ans = Math.floor(Math.random() * maxAns) + 1;
+            n1 = n2 * ans;
+            return { n1, n2, op: '÷', ans };
+          }
+          else if (level === 2) { 
+            n2 = Math.floor(Math.random() * 8) + 2; 
+            const rem = Math.floor(Math.random() * (n2 - 1)) + 1;
+            ans = Math.floor(Math.random() * 9) + 1;
+            n1 = n2 * ans + rem;
+            return { n1, n2, op: '÷', ans, rem };
+          }
+          else if (level === 3) { 
+            n2 = Math.floor(Math.random() * 8) + 2; 
+            const rem = Math.floor(Math.random() * (n2 - 1)) + 1;
+            const minAns = Math.ceil((100 - rem) / n2);
+            const maxAns = Math.floor((999 - rem) / n2);
+            ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns;
+            n1 = n2 * ans + rem;
+            return { n1, n2, op: '÷', ans, rem };
+          }
+          else if (level === 4) { 
+            n2 = Math.floor(Math.random() * 89) + 11; 
+            let rem = Math.floor(Math.random() * (n2 - 1)) + 1;
+            let maxAns = Math.floor((99 - rem) / n2);
+            if (maxAns < 1) {
+                n2 = Math.floor(Math.random() * 40) + 11;
+                rem = Math.floor(Math.random() * (n2 - 1)) + 1;
+                maxAns = Math.floor((99 - rem) / n2);
+            }
+            ans = Math.floor(Math.random() * Math.max(1, maxAns)) + 1;
+            n1 = n2 * ans + rem;
+            return { n1, n2, op: '÷', ans, rem };
+          }
+          else { 
+            n2 = Math.floor(Math.random() * 89) + 11; 
+            const rem = Math.floor(Math.random() * (n2 - 1)) + 1;
+            const minAns = Math.ceil((100 - rem) / n2);
+            const maxAns = Math.floor((999 - rem) / n2);
+            if (maxAns >= minAns) {
+              ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns;
+            } else {
+              ans = minAns; 
+            }
+            n1 = n2 * ans + rem;
+            return { n1, n2, op: '÷', ans, rem };
+          }
         default:
           return { n1: 1, n2: 1, op: '+', ans: 2 };
       }
@@ -748,7 +841,7 @@
                 'time_60_points', 'time_120_points', 'time_180_points'
               ].reduce((sum, k) => sum + (lvData[k] || 0), 0);
 
-              // 記録があるかチェック（ポイント以外のキーが1つ以上あるか、またはポイントがあるか）
+              // 記録があるかチェック
               if (Object.keys(lvData).length > 0) {
                 list.push({
                   typeLabel: t.label,
@@ -1130,6 +1223,8 @@
     const QuizView = ({ type, level, course, setView, setResult }) => {
       const [problem, setProblem] = useState({ n1: 0, n2: 0, op: '+', ans: 0 });
       const [userInput, setUserInput] = useState('');
+      const [userInputRem, setUserInputRem] = useState('');
+      const [focusedInput, setFocusedInput] = useState('ans'); // 'ans' or 'rem'
       const [status, setStatus] = useState('idle');
       const [score, setScore] = useState(0);
       
@@ -1166,6 +1261,8 @@
       useEffect(() => {
         setProblem(generateProblem(type, level));
         setUserInput('');
+        setUserInputRem('');
+        setFocusedInput('ans');
         setStatus('idle');
         setScore(0);
         setCountdown(3);
@@ -1261,20 +1358,35 @@
       const handleInput = useCallback((numStr) => {
         if (countdown !== null) return;
         if (status === 'correct') return;
-        setUserInput(prev => prev.length < 6 ? prev + numStr : prev);
-      }, [status, countdown]);
+        if (focusedInput === 'ans') {
+          setUserInput(prev => prev.length < 6 ? prev + numStr : prev);
+        } else {
+          setUserInputRem(prev => prev.length < 6 ? prev + numStr : prev);
+        }
+      }, [status, countdown, focusedInput]);
 
       const handleDelete = useCallback(() => {
         if (countdown !== null) return;
         if (status === 'correct') return;
-        setUserInput(prev => prev.slice(0, -1));
-      }, [status, countdown]);
+        if (focusedInput === 'ans') {
+          setUserInput(prev => prev.slice(0, -1));
+        } else {
+          setUserInputRem(prev => prev.slice(0, -1));
+        }
+      }, [status, countdown, focusedInput]);
 
       const handleCheck = useCallback(() => {
         if (countdown !== null) return;
-        if (!userInput || status === 'correct') return;
+        if (status === 'correct') return;
         
-        if (parseInt(userInput) === problem.ans) {
+        const hasRem = problem.rem !== undefined;
+        if (!userInput) return;
+        if (hasRem && !userInputRem) return;
+        
+        const isCorrectAns = parseInt(userInput) === problem.ans;
+        const isCorrectRem = hasRem ? parseInt(userInputRem) === problem.rem : true;
+        
+        if (isCorrectAns && isCorrectRem) {
           playCorrectSound();
           setStatus('correct');
           const newScore = score + 1;
@@ -1311,6 +1423,8 @@
             setTimeout(() => {
               setProblem(prev => generateProblem(type, level, prev));
               setUserInput('');
+              setUserInputRem('');
+              setFocusedInput('ans');
               setStatus('idle');
               setHint(""); 
               setClearKey(Date.now());
@@ -1320,6 +1434,8 @@
           saveMistake(type, problem);
           setStatus('wrong');
           setUserInput('');
+          setUserInputRem('');
+          setFocusedInput('ans');
           const newMistakes = mistakes + 1;
           setMistakes(newMistakes);
           if (newMistakes >= 3) {
@@ -1333,13 +1449,25 @@
             setTimeout(() => setStatus('idle'), 500);
           }
         }
-      }, [userInput, status, problem.ans, type, level, countdown, score, course, startTime, setResult, setView, mistakes]);
+      }, [userInput, userInputRem, status, problem.ans, problem.rem, type, level, countdown, score, course, startTime, setResult, setView, mistakes]);
 
       useEffect(() => {
-        if (countdown === null && userInput && parseInt(userInput) === problem.ans && status !== 'correct') {
-          handleCheck();
+        if (countdown === null && status !== 'correct') {
+          const hasRem = problem.rem !== undefined;
+          if (hasRem) {
+            if (focusedInput === 'ans' && userInput && parseInt(userInput) === problem.ans) {
+              setFocusedInput('rem');
+            }
+            if (userInput && userInputRem && parseInt(userInput) === problem.ans && parseInt(userInputRem) === problem.rem) {
+              handleCheck();
+            }
+          } else {
+            if (userInput && parseInt(userInput) === problem.ans) {
+              handleCheck();
+            }
+          }
         }
-      }, [userInput, problem.ans, status, handleCheck, countdown]);
+      }, [userInput, userInputRem, problem.ans, problem.rem, status, handleCheck, countdown, focusedInput]);
 
       useEffect(() => {
         if (countdown !== null) return;
@@ -1384,8 +1512,8 @@
           </button>
           <button
             onClick={handleCheck}
-            disabled={!userInput || countdown !== null}
-            className={`text-sm sm:text-xl font-bold py-3 sm:py-4 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null || !userInput ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
+            disabled={countdown !== null || !userInput || (problem.rem !== undefined && !userInputRem)}
+            className={`text-sm sm:text-xl font-bold py-3 sm:py-4 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null || !userInput || (problem.rem !== undefined && !userInputRem) ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
           >
             こたえる
           </button>
@@ -1464,10 +1592,25 @@
                   <span className={theme.text}>=</span>
                 </div>
                 
-                <div className="mt-4 sm:mt-8 flex justify-center">
-                  <div className={`w-24 h-16 sm:w-40 sm:h-24 md:w-48 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${userInput ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}>
+                <div className="mt-4 sm:mt-8 flex justify-center items-end gap-1 sm:gap-3">
+                  <div 
+                    onClick={() => setFocusedInput('ans')}
+                    className={`cursor-pointer w-20 h-16 sm:w-32 sm:h-24 md:w-40 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'ans' ? 'ring-4 ring-orange-400' : ''} ${userInput ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                  >
                     {userInput || '?'}
                   </div>
+                  
+                  {problem.rem !== undefined && (
+                    <React.Fragment>
+                      <div className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 mb-2 sm:mb-4 whitespace-nowrap">あまり</div>
+                      <div 
+                        onClick={() => setFocusedInput('rem')}
+                        className={`cursor-pointer w-16 h-16 sm:w-28 sm:h-24 md:w-32 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'rem' ? 'ring-4 ring-orange-400' : ''} ${userInputRem ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                      >
+                        {userInputRem || '?'}
+                      </div>
+                    </React.Fragment>
+                  )}
                 </div>
 
                 {/* AIヒントエリア */}
