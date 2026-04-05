@@ -15,11 +15,31 @@
   <!-- Babel for in-browser JSX compilation -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- Mobile Drag and Drop Polyfill -->
+  <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+
   <style>
     body {
       margin: 0;
       padding: 0;
       font-family: sans-serif;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+      .no-print {
+        display: none !important;
+      }
     }
   </style>
 </head>
@@ -53,7 +73,7 @@
     );
 
     // --- Gemini API 連携用の設定と関数 ---
-    const apiKey = ""; // 実行環境で自動的に設定されます
+    const apiKey = ""; 
 
     const fetchGeminiContent = async (prompt, systemPrompt) => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -281,9 +301,38 @@
     const saveMistake = (type, problem) => {
       const mistakes = JSON.parse(localStorage.getItem('sansu_mistakes') || '{}');
       if (!mistakes[type]) mistakes[type] = {};
-      const key = `${problem.n1}_${problem.op}_${problem.n2}`;
+      
+      let key;
+      if (problem.op === '数直線') {
+        key = `${problem.n1}_${problem.op}_${problem.n2}_${problem.missingIndex}`;
+      } else if (problem.op === '長さ') {
+        key = `length_${problem.ansTotalMm}`;
+      } else if (problem.op === '単位') {
+        key = `unit_${problem.answerType}_${problem.q_total_small || problem.q_total_cm}_${problem.q_large || problem.q_m}_${problem.q_small || problem.q_cm}_${problem.unitType || 'length'}`;
+      } else if (problem.op === '文章問題') {
+        key = `word_${problem.ans}_${problem.text.length}`;
+      } else if (problem.op === 'がい数') {
+        if (problem.answerType === 'approx_range') {
+          key = `approx_range_${problem.ans1}_${problem.ans2}`;
+        } else {
+          key = `approx_${problem.n1}_${problem.ans}`;
+        }
+      } else {
+        key = `${problem.n1}_${problem.op}_${problem.n2}`;
+      }
+      
       if (!mistakes[type][key]) {
-        mistakes[type][key] = { n1: problem.n1, op: problem.op, n2: problem.n2, count: 0 };
+        mistakes[type][key] = { 
+          n1: problem.n1, op: problem.op, n2: problem.n2, 
+          missingIndex: problem.missingIndex, 
+          ansCm: problem.ansCm, ansMm: problem.ansMm, ansTotalMm: problem.ansTotalMm,
+          answerType: problem.answerType,
+          q_large: problem.q_large, q_small: problem.q_small, q_total_small: problem.q_total_small, 
+          ans1: problem.ans1, ans2: problem.ans2,
+          unitType: problem.unitType, unitLarge: problem.unitLarge, unitSmall: problem.unitSmall,
+          text: problem.text, equation: problem.equation,
+          count: 0 
+        };
       }
       mistakes[type][key].count += 1;
       localStorage.setItem('sansu_mistakes', JSON.stringify(mistakes));
@@ -294,131 +343,190 @@
       let n1, n2, ans;
       switch (type) {
         case 'add':
-          if (level === 1) { 
-            n1 = Math.floor(Math.random() * 9) + 1; 
-            n2 = Math.floor(Math.random() * (10 - n1)) + 1; 
-          }
-          else if (level === 2) { 
-            n1 = Math.floor(Math.random() * 8) + 2; 
-            n2 = Math.floor(Math.random() * (9 - (11 - n1) + 1)) + (11 - n1); 
-          }
-          else if (level === 3) { 
-            n1 = Math.floor(Math.random() * 90) + 10; 
-            n2 = Math.floor(Math.random() * 9) + 1; 
-          }
-          else if (level === 4) { 
-            n1 = Math.floor(Math.random() * 90) + 10; 
-            n2 = Math.floor(Math.random() * 90) + 10; 
-          }
-          else { 
-            n1 = Math.floor(Math.random() * 900) + 100; 
-            n2 = Math.random() < 0.5 ? Math.floor(Math.random() * 90) + 10 : Math.floor(Math.random() * 900) + 100; 
-          }
-          ans = n1 + n2;
-          return { n1, n2, op: '+', ans };
+          if (level === 1) { n1 = Math.floor(Math.random() * 9) + 1; n2 = Math.floor(Math.random() * (10 - n1)) + 1; }
+          else if (level === 2) { n1 = Math.floor(Math.random() * 8) + 2; n2 = Math.floor(Math.random() * (9 - (11 - n1) + 1)) + (11 - n1); }
+          else if (level === 3) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 9) + 1; }
+          else if (level === 4) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 90) + 10; }
+          else { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.random() < 0.5 ? Math.floor(Math.random() * 90) + 10 : Math.floor(Math.random() * 900) + 100; }
+          ans = n1 + n2; return { n1, n2, op: '+', ans };
         case 'sub':
-          if (level === 1) { 
-            n1 = Math.floor(Math.random() * 9) + 2; 
-            n2 = Math.floor(Math.random() * (n1 - 1)) + 1; 
-          }
-          else if (level === 2) { 
-            n1 = Math.floor(Math.random() * 10) + 11; 
-            n2 = Math.floor(Math.random() * 9) + 1; 
-          }
-          else if (level === 3) { 
-            n1 = Math.floor(Math.random() * 79) + 21; 
-            n2 = Math.floor(Math.random() * (n1 - 10)) + 10; 
-          }
-          else if (level === 4) { 
-            n1 = Math.floor(Math.random() * 900) + 100; 
-            n2 = Math.floor(Math.random() * 90) + 10; 
-          }
-          else { 
-            n1 = Math.floor(Math.random() * 900) + 100; 
-            n2 = Math.floor(Math.random() * (n1 - 100)) + 100; 
-          }
-          ans = n1 - n2;
-          return { n1, n2, op: '-', ans };
+          if (level === 1) { n1 = Math.floor(Math.random() * 9) + 2; n2 = Math.floor(Math.random() * (n1 - 1)) + 1; }
+          else if (level === 2) { n1 = Math.floor(Math.random() * 10) + 11; n2 = Math.floor(Math.random() * 9) + 1; }
+          else if (level === 3) { n1 = Math.floor(Math.random() * 79) + 21; n2 = Math.floor(Math.random() * (n1 - 10)) + 10; }
+          else if (level === 4) { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * 90) + 10; }
+          else { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * (n1 - 100)) + 100; }
+          ans = n1 - n2; return { n1, n2, op: '-', ans };
         case 'mul':
-          if (level === 1) { 
-            n1 = Math.floor(Math.random() * 9) + 1; 
-            n2 = Math.floor(Math.random() * 9) + 1; 
-          }
-          else if (level === 2) { 
-            const r = Math.random();
-            if (r < 0.15) {
-              n1 = 0; n2 = Math.floor(Math.random() * 9) + 1;
-            } else if (r < 0.3) {
-              n1 = Math.floor(Math.random() * 9) + 1; n2 = 0;
-            } else {
-              n1 = Math.floor(Math.random() * 11) + 1; 
-              n2 = Math.floor(Math.random() * 10) + 1; 
-            }
-          }
-          else if (level === 3) { 
-            n1 = Math.floor(Math.random() * 90) + 10; 
-            n2 = Math.floor(Math.random() * 8) + 2; 
-          }
-          else if (level === 4) { 
-            n1 = Math.floor(Math.random() * 90) + 10; 
-            n2 = Math.floor(Math.random() * 90) + 10; 
-          }
-          else { 
-            n1 = Math.floor(Math.random() * 900) + 100; 
-            n2 = Math.floor(Math.random() * 90) + 10; 
-          }
-          ans = n1 * n2;
-          return { n1, n2, op: '×', ans };
+          if (level === 1) { n1 = Math.floor(Math.random() * 9) + 1; n2 = Math.floor(Math.random() * 9) + 1; }
+          else if (level === 2) { const r = Math.random(); if (r < 0.15) { n1 = 0; n2 = Math.floor(Math.random() * 9) + 1; } else if (r < 0.3) { n1 = Math.floor(Math.random() * 9) + 1; n2 = 0; } else { n1 = Math.floor(Math.random() * 11) + 1; n2 = Math.floor(Math.random() * 10) + 1; } }
+          else if (level === 3) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 8) + 2; }
+          else if (level === 4) { n1 = Math.floor(Math.random() * 90) + 10; n2 = Math.floor(Math.random() * 90) + 10; }
+          else { n1 = Math.floor(Math.random() * 900) + 100; n2 = Math.floor(Math.random() * 90) + 10; }
+          ans = n1 * n2; return { n1, n2, op: '×', ans };
         case 'div':
-          if (level === 1) { 
-            n2 = Math.floor(Math.random() * 9) + 1; 
-            const maxAns = Math.floor(99 / n2);
-            ans = Math.floor(Math.random() * maxAns) + 1;
-            n1 = n2 * ans;
-            return { n1, n2, op: '÷', ans };
+          if (level === 1) { n2 = Math.floor(Math.random() * 9) + 1; const maxAns = Math.floor(99 / n2); ans = Math.floor(Math.random() * maxAns) + 1; n1 = n2 * ans; return { n1, n2, op: '÷', ans }; }
+          else if (level === 2) { n2 = Math.floor(Math.random() * 8) + 2; const rem = Math.floor(Math.random() * (n2 - 1)) + 1; ans = Math.floor(Math.random() * 9) + 1; n1 = n2 * ans + rem; return { n1, n2, op: '÷', ans, rem }; }
+          else if (level === 3) { n2 = Math.floor(Math.random() * 8) + 2; const rem = Math.floor(Math.random() * (n2 - 1)) + 1; const minAns = Math.ceil((100 - rem) / n2); const maxAns = Math.floor((999 - rem) / n2); ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns; n1 = n2 * ans + rem; return { n1, n2, op: '÷', ans, rem }; }
+          else if (level === 4) { n2 = Math.floor(Math.random() * 89) + 11; let rem = Math.floor(Math.random() * (n2 - 1)) + 1; let maxAns = Math.floor((99 - rem) / n2); if (maxAns < 1) { n2 = Math.floor(Math.random() * 40) + 11; rem = Math.floor(Math.random() * (n2 - 1)) + 1; maxAns = Math.floor((99 - rem) / n2); } ans = Math.floor(Math.random() * Math.max(1, maxAns)) + 1; n1 = n2 * ans + rem; return { n1, n2, op: '÷', ans, rem }; }
+          else { n2 = Math.floor(Math.random() * 89) + 11; const rem = Math.floor(Math.random() * (n2 - 1)) + 1; const minAns = Math.ceil((100 - rem) / n2); const maxAns = Math.floor((999 - rem) / n2); if (maxAns >= minAns) { ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns; } else { ans = minAns; } n1 = n2 * ans + rem; return { n1, n2, op: '÷', ans, rem }; }
+        case 'number_line': {
+          let start = 0; let count = Math.floor(Math.random() * 4) + 6; let missingIndex = Math.floor(Math.random() * (count - 1)) + 1;
+          if (level === 1) { let step = 1; let ans = start + step * missingIndex; let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; }
+          else if (level === 2) { let step = [2, 5, 10, 50, 100][Math.floor(Math.random() * 5)]; let ans = start + step * missingIndex; let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; }
+          else if (level === 3) { let step = [0.1, 0.2, 0.5][Math.floor(Math.random() * 3)]; let ans = Number((start + step * missingIndex).toFixed(1)); let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : Number((start + step * i).toFixed(1))); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'decimal' }; }
+          else if (level === 4) { let den = [3, 4, 5, 6, 7, 8, 9, 10][Math.floor(Math.random() * 8)]; count = den + 1; if (count > 9) count = 9; if (count < 5) count = 5; missingIndex = Math.floor(Math.random() * (count - 2)) + 1; let ansNum = missingIndex; let ansDen = den; let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (i === den) return 1; return { type: 'fraction', num: i, den: den, int: 0 }; }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, labels, count, missingIndex, answerType: 'fraction_proper' }; }
+          else { let den = [3, 4, 5][Math.floor(Math.random() * 3)]; count = Math.floor(Math.random() * 3) + 7; let isMixed = Math.random() < 0.5; missingIndex = Math.floor(Math.random() * (count - 2)) + 2; let ansNum, ansDen, ansInt; if (isMixed) { ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; if (ansNum === 0) { missingIndex++; ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; } ansDen = den; } else { ansNum = missingIndex; ansDen = den; ansInt = 0; } let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (isMixed) { let intPart = Math.floor(i / den); let numPart = i % den; if (numPart === 0) return intPart; return { type: 'fraction', num: numPart, den: den, int: intPart }; } else { return { type: 'fraction', num: i, den: den, int: 0 }; } }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, ansInt, labels, count, missingIndex, answerType: isMixed ? 'fraction_mixed' : 'fraction_improper' }; }
+        }
+        case 'length': {
+          let ansCm = 0, ansMm = 0, answerType = '';
+          if (level === 1) { ansCm = Math.floor(Math.random() * 9) + 1; ansMm = 0; answerType = 'length_cm'; }
+          else if (level === 2) { if (Math.random() < 0.5) { ansCm = 0; ansMm = Math.floor(Math.random() * 59) + 1; if (ansMm >= 10 && ansMm % 10 === 0) ansMm += Math.floor(Math.random() * 9) + 1; answerType = 'length_mm'; } else { ansCm = Math.floor(Math.random() * 5) + 1; ansMm = Math.floor(Math.random() * 9) + 1; answerType = 'length_cm_mm'; } }
+          else if (level === 3) { ansCm = Math.floor(Math.random() * 9) + 1; ansMm = Math.floor(Math.random() * 9) + 1; answerType = 'length_cm_mm'; }
+          else if (level === 4) { ansCm = Math.floor(Math.random() * 6) + 10; ansMm = Math.floor(Math.random() * 9) + 1; answerType = 'length_cm_mm'; }
+          else { ansCm = Math.floor(Math.random() * 10) + 10; ansMm = Math.floor(Math.random() * 9) + 1; answerType = 'length_cm_mm'; }
+          const ansTotalMm = ansCm * 10 + ansMm; const maxCm = Math.max(10, Math.ceil(ansTotalMm / 10) + 1); return { op: '長さ', answerType, ansCm, ansMm, ansTotalMm, maxCm, n1: ansCm, n2: ansMm };
+        }
+        case 'unit': {
+          let unitType = 'length'; if (level >= 2) { unitType = Math.random() < 0.5 ? 'length' : 'weight'; }
+          let unitLarge = unitType === 'length' ? 'm' : 'kg'; let unitSmall = unitType === 'length' ? 'cm' : 'g'; let multiplier = unitType === 'length' ? 100 : 1000;
+          let q_large = 0, q_small = 0, q_total_small = 0, ans1 = 0, ans2 = 0, answerType = '', allowDecimal = false, pattern = Math.floor(Math.random() * 4) + 1;
+          let isDecimalProblem = false; if (level >= 3) { if ((pattern === 1 || pattern === 2) && Math.random() < 0.5) { isDecimalProblem = true; } }
+          let m_val = 0, cm_val = 0; 
+          if (level === 1) { m_val = Math.floor(Math.random() * 9) + 1; cm_val = Math.floor(Math.random() * 9) + 1; }
+          else if (level === 2) { m_val = Math.floor(Math.random() * 9) + 1; cm_val = Math.floor(Math.random() * (multiplier > 100 ? 890 : 89)) + 10; }
+          else if (level === 3) { m_val = Math.floor(Math.random() * 9) + 1; cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; }
+          else if (level === 4) { m_val = Math.floor(Math.random() * 11) + 10; cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; }
+          else { m_val = Math.floor(Math.random() * 80) + 20; cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; }
+
+          if (isDecimalProblem) {
+             allowDecimal = true; let dec = Math.floor(Math.random() * 9) + 1; let decimalVal = m_val + dec / 10; 
+             if (pattern === 1) { ans1 = decimalVal; q_total_small = Math.round(decimalVal * multiplier); answerType = 'unit_large'; }
+             else { q_large = decimalVal; ans1 = Math.round(decimalVal * multiplier); answerType = 'unit_small'; }
+          } else {
+            if (pattern === 1) { ans1 = m_val; q_total_small = ans1 * multiplier; answerType = 'unit_large'; }
+            else if (pattern === 2) { q_large = m_val; ans1 = q_large * multiplier; answerType = 'unit_small'; }
+            else if (pattern === 3) { if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; q_large = m_val; q_small = cm_val; ans1 = q_large * multiplier + q_small; answerType = 'unit_small_from_composite'; }
+            else if (pattern === 4) { if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; ans1 = m_val; ans2 = cm_val; q_total_small = ans1 * multiplier + ans2; answerType = 'unit_composite_from_small'; }
           }
-          else if (level === 2) { 
-            n2 = Math.floor(Math.random() * 8) + 2; 
-            const rem = Math.floor(Math.random() * (n2 - 1)) + 1;
-            ans = Math.floor(Math.random() * 9) + 1;
-            n1 = n2 * ans + rem;
-            return { n1, n2, op: '÷', ans, rem };
+          return { op: '単位', answerType, unitType, unitLarge, unitSmall, q_large, q_small, q_total_small, ans1, ans2, allowDecimal, n1: q_total_small || q_large, n2: q_small || 0, ans: ans1 };
+        }
+        case 'word_problem': {
+          let text = '', ans = 0, equation = '';
+          let actualLevel = level; if (level === 5) actualLevel = Math.floor(Math.random() * 4) + 1;
+
+          if (actualLevel === 1) { 
+            const templates = [
+              () => { const a = Math.floor(Math.random() * 5) + 1; const b = Math.floor(Math.random() * 4) + 1; return { text: `公園に 子供が ${a}人 います。\nあとから ${b}人 来ました。\n子供は ぜんぶで 何人に なりましたか？`, ans: a + b, equation: `${a} + ${b} = ${a + b}` }; },
+              () => { const a = Math.floor(Math.random() * 5) + 5; const b = Math.floor(Math.random() * 4) + 1; return { text: `りんごが ${a}こ あります。\n${b}こ 食べました。\nのこりは 何こですか？`, ans: a - b, equation: `${a} - ${b} = ${a - b}` }; },
+              () => { const a = Math.floor(Math.random() * 5) + 1; const b = Math.floor(Math.random() * 5) + 1; return { text: `あかい くるまが ${a}だい、あおい くるまが ${b}だい あります。\nくるまは あわせて 何だいに なりますか？`, ans: a + b, equation: `${a} + ${b} = ${a + b}` }; },
+              () => { const a = Math.floor(Math.random() * 5) + 5; const b = Math.floor(Math.random() * 4) + 1; return { text: `えんぴつを ${a}本 もっています。\nおとうとに ${b}本 あげました。\nのこりは 何本ですか？`, ans: a - b, equation: `${a} - ${b} = ${a - b}` }; },
+              () => { const a = Math.floor(Math.random() * 5) + 1; const b = Math.floor(Math.random() * 5) + 1; return { text: `おさらの上に クッキーが ${a}こ あります。\nお母さんが ${b}こ もってきて くれました。\nクッキーは ぜんぶで 何こですか？`, ans: a + b, equation: `${a} + ${b} = ${a + b}` }; }
+            ];
+            const p = templates[Math.floor(Math.random() * templates.length)](); text = p.text; ans = p.ans; equation = p.equation;
+          } else if (actualLevel === 2) { 
+            const templates = [
+              () => { const a = Math.floor(Math.random() * 40) + 10; const b = Math.floor(Math.random() * 40) + 10; return { text: `本を ${a + b}ページ 読みます。\nきょう ${a}ページ 読みました。\nまだ 何ページ のこっていますか？`, ans: b, equation: `${a + b} - ${a} = ${b}` }; },
+              () => { const a = Math.floor(Math.random() * 20) + 20; const b = Math.floor(Math.random() * 15) + 5; return { text: `えんそくに ${a}人 行きます。\n男の子は ${b}人です。\n女の子は 何人ですか？`, ans: a - b, equation: `${a} - ${b} = ${a - b}` }; },
+              () => { const a = Math.floor(Math.random() * 8) + 2; const b = Math.floor(Math.random() * 8) + 2; return { text: `1はこに チョコレートが ${a}こ 入っています。\n${b}はこ 買うと、ぜんぶで 何こに なりますか？`, ans: a * b, equation: `${a} × ${b} = ${a * b}` }; },
+              () => { const a = Math.floor(Math.random() * 8) + 2; const b = Math.floor(Math.random() * 8) + 2; return { text: `1日に ${a}まいずつ おりがみを おります。\n${b}日たつと、おりがみは ぜんぶで 何まい おれますか？`, ans: a * b, equation: `${a} × ${b} = ${a * b}` }; },
+              () => { const a = Math.floor(Math.random() * 30) + 20; const b = Math.floor(Math.random() * 20) + 10; return { text: `いちごが ${a}こ あります。\nともだちから ${b}こ もらいました。\nいちごは ぜんぶで 何こに なりましたか？`, ans: a + b, equation: `${a} + ${b} = ${a + b}` }; }
+            ];
+            const p = templates[Math.floor(Math.random() * templates.length)](); text = p.text; ans = p.ans; equation = p.equation;
+          } else if (actualLevel === 3) { 
+            const templates = [
+              () => { const a = Math.floor(Math.random() * 300) + 100; const b = Math.floor(Math.random() * 200) + 100; return { text: `1さつ ${a}円の ノートと、1本 ${b}円の えんぴつを 買いました。\nあわせて 何円に なりますか？`, ans: a + b, equation: `${a} + ${b} = ${a + b}` }; },
+              () => { const a = Math.floor(Math.random() * 300) + 500; const b = Math.floor(Math.random() * 200) + 100; return { text: `${a}円 もって 買い物に 行き、${b}円の 本を 買いました。\nおつりは 何円ですか？`, ans: a - b, equation: `${a} - ${b} = ${a - b}` }; },
+              () => { const a = Math.floor(Math.random() * 8) + 2; const b = Math.floor(Math.random() * 15) + 10; return { text: `1はこに クッキーが ${a}まい 入っています。\n${b}はこ 買うと、ぜんぶで 何まいですか？`, ans: a * b, equation: `${a} × ${b} = ${a * b}` }; },
+              () => { const b = Math.floor(Math.random() * 8) + 2; const ans_ = Math.floor(Math.random() * 8) + 2; return { text: `${ans_ * b}この あめを、${b}人で 同じ 数ずつ 分けます。\n1人分は 何こに なりますか？`, ans: ans_, equation: `${ans_ * b} ÷ ${b} = ${ans_}` }; },
+              () => { const b = Math.floor(Math.random() * 8) + 2; const ans_ = Math.floor(Math.random() * 8) + 2; return { text: `色紙が ${ans_ * b}まい あります。\n1人に ${b}まいずつ 配ると、何人に 配れますか？`, ans: ans_, equation: `${ans_ * b} ÷ ${b} = ${ans_}` }; }
+            ];
+            const p = templates[Math.floor(Math.random() * templates.length)](); text = p.text; ans = p.ans; equation = p.equation;
+          } else { 
+            const templates = [
+              () => { const a = Math.floor(Math.random() * 800) + 100; const b = Math.floor(Math.random() * 8) + 2; return { text: `1さつ ${a}円の じしょを ${b}さつ 買います。\n代金は 何円に なりますか？`, ans: a * b, equation: `${a} × ${b} = ${a * b}` }; },
+              () => { const b = Math.floor(Math.random() * 8) + 2; const ans_ = Math.floor(Math.random() * 30) + 10; return { text: `${ans_ * b}円を もって 買い物に 行き、1こ ${b}円の おかしを 買えるだけ 買います。\nおかしは 何こ 買えますか？`, ans: ans_, equation: `${ans_ * b} ÷ ${b} = ${ans_}` }; },
+              () => { const b = Math.floor(Math.random() * 8) + 2; const ans_ = Math.floor(Math.random() * 20) + 10; return { text: `${ans_ * b}この ボールを、1はこに ${b}こずつ 入れていきます。\nはこは ぜんぶで 何こ できますか？`, ans: ans_, equation: `${ans_ * b} ÷ ${b} = ${ans_}` }; },
+              () => { const a = Math.floor(Math.random() * 50) + 100; const b = Math.floor(Math.random() * 50) + 100; return { text: `長さが ${a}cmの リボンと、長さが ${b}cmの リボンが あります。\n2つの リボンの 長さを あわせると、何cmに なりますか？`, ans: a + b, equation: `${a} + ${b} = ${a + b}` }; },
+              () => { const b = Math.floor(Math.random() * 8) + 2; const ans_ = Math.floor(Math.random() * 40) + 10; return { text: `おかしが ${ans_ * b}こ あります。\nこれを ${b}この ふくろに 同じ 数ずつ 分けて 入れます。\n1つの ふくろに 何こ 入りますか？`, ans: ans_, equation: `${ans_ * b} ÷ ${b} = ${ans_}` }; }
+            ];
+            const p = templates[Math.floor(Math.random() * templates.length)](); text = p.text; ans = p.ans; equation = p.equation;
           }
-          else if (level === 3) { 
-            n2 = Math.floor(Math.random() * 8) + 2; 
-            const rem = Math.floor(Math.random() * (n2 - 1)) + 1;
-            const minAns = Math.ceil((100 - rem) / n2);
-            const maxAns = Math.floor((999 - rem) / n2);
-            ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns;
-            n1 = n2 * ans + rem;
-            return { n1, n2, op: '÷', ans, rem };
-          }
-          else if (level === 4) { 
-            n2 = Math.floor(Math.random() * 89) + 11; 
-            let rem = Math.floor(Math.random() * (n2 - 1)) + 1;
-            let maxAns = Math.floor((99 - rem) / n2);
-            if (maxAns < 1) {
-                n2 = Math.floor(Math.random() * 40) + 11;
-                rem = Math.floor(Math.random() * (n2 - 1)) + 1;
-                maxAns = Math.floor((99 - rem) / n2);
+          return { op: '文章問題', text, ans, equation, n1: 0, n2: 0, answerType: 'integer' };
+        }
+        case 'approx': {
+          let text = '';
+          let ans = 0;
+          let n1 = 0;
+          let answerType = 'integer';
+          let ans1 = 0, ans2 = 0;
+          
+          let actualLevel = level;
+          if (level === 5) actualLevel = Math.floor(Math.random() * 4) + 1;
+
+          const getNum = (digits) => {
+            let available = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            let firstDigitIndex = Math.floor(Math.random() * 9) + 1;
+            let firstDigit = available.splice(firstDigitIndex, 1)[0];
+            let numStr = firstDigit.toString();
+            
+            for (let i = 1; i < digits; i++) {
+              let nextIndex = Math.floor(Math.random() * available.length);
+              let nextDigit = available.splice(nextIndex, 1)[0];
+              numStr += nextDigit.toString();
             }
-            ans = Math.floor(Math.random() * Math.max(1, maxAns)) + 1;
-            n1 = n2 * ans + rem;
-            return { n1, n2, op: '÷', ans, rem };
-          }
-          else { 
-            n2 = Math.floor(Math.random() * 89) + 11; 
-            const rem = Math.floor(Math.random() * (n2 - 1)) + 1;
-            const minAns = Math.ceil((100 - rem) / n2);
-            const maxAns = Math.floor((999 - rem) / n2);
-            if (maxAns >= minAns) {
-              ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns;
+            return parseInt(numStr, 10);
+          };
+
+          if (actualLevel === 1) {
+            const digits = Math.floor(Math.random() * 3) + 3; // 3, 4, 5
+            n1 = getNum(digits);
+            if (digits === 3) {
+              ans = Math.round(n1 / 100) * 100;
+              text = `${n1}の 十の位を 四捨五入して、\n約何百と あらわしましょう。`;
+            } else if (digits === 4) {
+              ans = Math.round(n1 / 1000) * 1000;
+              text = `${n1}の 百の位を 四捨五入して、\n約何千と あらわしましょう。`;
             } else {
-              ans = minAns; 
+              ans = Math.round(n1 / 10000) * 10000;
+              text = `${n1}の 千の位を 四捨五入して、\n約何万と あらわしましょう。`;
             }
-            n1 = n2 * ans + rem;
-            return { n1, n2, op: '÷', ans, rem };
+          } else if (actualLevel === 2) {
+            const targetDigit = Math.floor(Math.random() * 3) + 1; // 1:十の位, 2:百の位, 3:千の位まで
+            let digits = targetDigit + Math.floor(Math.random() * 2) + 1; // 桁数は目標より上
+            if (digits > 5) digits = 5;
+            n1 = getNum(digits);
+            const power = Math.pow(10, targetDigit);
+            ans = Math.round(n1 / power) * power;
+            const placeName = targetDigit === 1 ? '十' : targetDigit === 2 ? '百' : '千';
+            text = `四捨五入して、\n${placeName}の位までの がい数に しましょう。\n\n${n1}`;
+          } else if (actualLevel === 3) {
+            const digits = Math.floor(Math.random() * 3) + 3; // 3, 4, 5
+            n1 = getNum(digits);
+            const power = Math.pow(10, digits - 2);
+            ans = Math.round(n1 / power) * power;
+            text = `四捨五入して、\n上から2けたの がい数に しましょう。\n\n${n1}`;
+          } else if (actualLevel === 4) {
+            answerType = 'approx_range';
+            const placeName = '十';
+            
+            let available = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            let firstDigitIndex = Math.floor(Math.random() * available.length);
+            let targetStr = available.splice(firstDigitIndex, 1)[0].toString();
+            const digits = Math.floor(Math.random() * 3) + 2; 
+            for (let i = 1; i < digits - 1; i++) {
+              let nextIndex = Math.floor(Math.random() * available.length);
+              targetStr += available.splice(nextIndex, 1)[0].toString();
+            }
+            targetStr += '0';
+            const targetVal = parseInt(targetStr, 10);
+            
+            ans1 = targetVal - 5; 
+            ans2 = targetVal + 5; 
+            text = `四捨五入して、${placeName}の位までの がい数にした時、\n${targetVal} になる 整数は、\n何以上、何未満ですか。`;
           }
+          
+          return { op: 'がい数', text, ans, ans1, ans2, n1, n2: 0, answerType };
+        }
         default:
           return { n1: 1, n2: 1, op: '+', ans: 2 };
       }
@@ -433,7 +541,13 @@
         prevProblem &&
         newProblem.n1 === prevProblem.n1 &&
         newProblem.n2 === prevProblem.n2 &&
-        newProblem.op === prevProblem.op
+        newProblem.op === prevProblem.op &&
+        newProblem.ans === prevProblem.ans &&
+        newProblem.ansNum === prevProblem.ansNum &&
+        newProblem.ansTotalMm === prevProblem.ansTotalMm &&
+        newProblem.q_total_small === prevProblem.q_total_small &&
+        newProblem.q_large === prevProblem.q_large &&
+        newProblem.text === prevProblem.text
       );
       return newProblem;
     };
@@ -457,6 +571,8 @@
     const VerticalMath = ({ problem }) => {
       const { n1, n2, op } = problem;
       
+      if (op === '数直線' || op === '長さ' || op === '単位' || op === '文章問題' || op === 'がい数') return null;
+
       if (op === '÷') {
         const n1Chars = String(n1).split('');
         const n2Chars = String(n2).split('');
@@ -535,6 +651,47 @@
             </div>
           </div>
         </div>
+      );
+    };
+
+    // ---------------------------------------------------------
+    // ものさし描画コンポーネント
+    // ---------------------------------------------------------
+    const RulerSVG = ({ totalMm, maxCm }) => {
+      const width = 800; 
+      const height = 160;
+      const padding = 40;
+      const usableWidth = width - padding * 2;
+      const mmWidth = usableWidth / (maxCm * 10);
+      
+      return (
+        <svg width="100%" height="160" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          <rect x={padding - 15} y="60" width={usableWidth + 30} height="70" fill="#fef3c7" stroke="#d97706" strokeWidth="3" rx="6" />
+          
+          {Array.from({length: maxCm * 10 + 1}).map((_, i) => {
+            const x = padding + i * mmWidth;
+            const isCm = i % 10 === 0;
+            const isHalf = i % 5 === 0 && !isCm;
+            const lineY = 60;
+            const lineHeight = isCm ? 35 : isHalf ? 25 : 15;
+            return (
+              <g key={i}>
+                <line x1={x} y1={lineY} x2={x} y2={lineY + lineHeight} stroke="#92400e" strokeWidth={isCm ? 3 : isHalf ? 2 : 1.5} />
+                {isCm && (
+                  <text x={x} y={lineY + 55} textAnchor="middle" fontSize="22" fontWeight="bold" fill="#92400e">
+                    {i / 10}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+          
+          <g transform={`translate(${padding + totalMm * mmWidth}, 35)`}>
+            <polygon points="-12,0 12,0 0,25" fill="#ef4444" />
+            <line x1="0" y1="-25" x2="0" y2="0" stroke="#ef4444" strokeWidth="6" strokeLinecap="round" />
+          </g>
+          <rect x={padding} y="40" width={totalMm * mmWidth} height="12" fill="#ef4444" opacity="0.6" />
+        </svg>
       );
     };
 
@@ -662,7 +819,34 @@
     // ---------------------------------------------------------
     const HomeView = ({ setType, setView }) => {
       const [dailyComment, setDailyComment] = useState('');
-      const [typePoints, setTypePoints] = useState({ add: 0, sub: 0, mul: 0, div: 0 });
+      const [typePoints, setTypePoints] = useState({ add: 0, sub: 0, mul: 0, div: 0, number_line: 0, length: 0, unit: 0, word_problem: 0, approx: 0 });
+
+      const [order, setOrder] = useState(() => {
+        const savedOrder = localStorage.getItem('sansu_button_order');
+        const defaultOrder = ['add', 'sub', 'mul', 'div', 'approx', 'number_line', 'length', 'unit', 'word_problem', 'print'];
+        if (savedOrder) {
+          try {
+            const parsed = JSON.parse(savedOrder);
+            if (Array.isArray(parsed)) {
+              const mergedOrder = [...parsed];
+              defaultOrder.forEach(item => {
+                if (!mergedOrder.includes(item)) {
+                  mergedOrder.push(item);
+                }
+              });
+              return mergedOrder;
+            }
+          } catch(e) {}
+        }
+        return defaultOrder;
+      });
+
+      const dragItem = useRef(null);
+      const dragNode = useRef(null);
+
+      useEffect(() => {
+        localStorage.setItem('sansu_button_order', JSON.stringify(order));
+      }, [order]);
 
       useEffect(() => {
         const today = new Date();
@@ -730,11 +914,16 @@
           sub: calcTypeTotal('sub'),
           mul: calcTypeTotal('mul'),
           div: calcTypeTotal('div'),
+          approx: calcTypeTotal('approx'),
+          number_line: calcTypeTotal('number_line'),
+          length: calcTypeTotal('length'),
+          unit: calcTypeTotal('unit'),
+          word_problem: calcTypeTotal('word_problem')
         });
       }, []);
 
       return (
-        <div className="relative flex flex-col items-center justify-center min-h-screen bg-amber-50 p-6">
+        <div className="relative flex flex-col items-center justify-center min-h-screen bg-amber-50 p-6 print:hidden">
           <button 
             onClick={() => setView('records')}
             className="absolute top-4 right-4 md:top-6 md:right-6 bg-amber-400 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-xl shadow-[0_4px_0_#d97706] active:shadow-[0_0px_0_#d97706] active:translate-y-[4px] flex items-center gap-2 transition-all z-10"
@@ -742,7 +931,7 @@
             <Award className="w-5 h-5 inline-block" /> <span className="hidden sm:inline">あなたの記録</span><span className="sm:hidden">きろく</span>
           </button>
 
-          <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 border-amber-200">
+          <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 border-amber-200 mt-12 md:mt-0">
             <div className="flex justify-center mb-4">
               <Award className="w-16 h-16 text-yellow-500" />
             </div>
@@ -758,7 +947,7 @@
                 <div className="flex items-baseline gap-2">
                   <Star className="w-10 h-10 md:w-12 md:h-12 fill-yellow-500 text-yellow-500 mb-1 inline-block" />
                   <span className="text-6xl md:text-7xl drop-shadow-md tracking-tight">
-                    {typePoints.add + typePoints.sub + typePoints.mul + typePoints.div}
+                    {typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem}
                   </span>
                   <span className="text-2xl md:text-3xl text-yellow-800">pt</span>
                 </div>
@@ -772,41 +961,68 @@
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button 
-                onClick={() => { setType('add'); setView('level'); }}
-                className="group relative flex flex-col items-center justify-center gap-1 bg-red-400 hover:bg-red-500 text-white py-5 px-4 rounded-2xl shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c] active:translate-y-[6px] transition-all"
-              >
-                <span className="text-2xl font-bold">たしざん</span>
-                <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">合計: {typePoints.add} pt</span>
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-200 group-hover:text-red-100 text-3xl">+</span>
-              </button>
-              
-              <button 
-                onClick={() => { setType('sub'); setView('level'); }}
-                className="group relative flex flex-col items-center justify-center gap-1 bg-blue-400 hover:bg-blue-500 text-white py-5 px-4 rounded-2xl shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[6px] transition-all"
-              >
-                <span className="text-2xl font-bold">ひき算</span>
-                <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">合計: {typePoints.sub} pt</span>
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-200 group-hover:text-blue-100 text-4xl">-</span>
-              </button>
+              {order.map((key, index) => {
+                const buttonData = {
+                  add: { label: 'たしざん', bg: 'bg-red-400 hover:bg-red-500', shadow: 'shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', iconText: '+', iconColor: 'text-red-200 group-hover:text-red-100', iconSize: 'text-3xl' },
+                  sub: { label: 'ひき算', bg: 'bg-blue-400 hover:bg-blue-500', shadow: 'shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', iconText: '-', iconColor: 'text-blue-200 group-hover:text-blue-100', iconSize: 'text-4xl' },
+                  mul: { label: 'かけ算', bg: 'bg-green-400 hover:bg-green-500', shadow: 'shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', iconText: '×', iconColor: 'text-green-200 group-hover:text-green-100', iconSize: 'text-3xl' },
+                  div: { label: 'わり算', bg: 'bg-purple-400 hover:bg-purple-500', shadow: 'shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', iconText: '÷', iconColor: 'text-purple-200 group-hover:text-purple-100', iconSize: 'text-3xl' },
+                  approx: { label: 'がい数', bg: 'bg-orange-400 hover:bg-orange-500', shadow: 'shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c]', iconText: '🔢', iconColor: 'text-orange-200 group-hover:text-orange-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  number_line: { label: '数直線', bg: 'bg-pink-400 hover:bg-pink-500', shadow: 'shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', iconText: '📏', iconColor: 'text-pink-200 group-hover:text-pink-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  length: { label: '長さ', bg: 'bg-teal-400 hover:bg-teal-500', shadow: 'shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', iconText: '📐', iconColor: 'text-teal-200 group-hover:text-teal-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  unit: { label: '単位', bg: 'bg-cyan-400 hover:bg-cyan-500', shadow: 'shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', iconText: '🔄', iconColor: 'text-cyan-200 group-hover:text-cyan-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  word_problem: { label: '文章問題', bg: 'bg-indigo-400 hover:bg-indigo-500', shadow: 'shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', iconText: '📖', iconColor: 'text-indigo-200 group-hover:text-indigo-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  print: { label: 'プリント印刷', bg: 'bg-stone-400 hover:bg-stone-500', shadow: 'shadow-[0_6px_0_#57534e] active:shadow-[0_0px_0_#57534e]', iconText: '🖨️', iconColor: 'text-stone-200 group-hover:text-stone-100', iconSize: 'text-4xl', iconPos: 'right-8' }
+                };
+                const btn = buttonData[key];
+                if (!btn) return null;
 
-              <button 
-                onClick={() => { setType('mul'); setView('level'); }}
-                className="group relative flex flex-col items-center justify-center gap-1 bg-green-400 hover:bg-green-500 text-white py-5 px-4 rounded-2xl shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d] active:translate-y-[6px] transition-all"
-              >
-                <span className="text-2xl font-bold">かけ算</span>
-                <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">合計: {typePoints.mul} pt</span>
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-green-200 group-hover:text-green-100 text-3xl">×</span>
-              </button>
-
-              <button 
-                onClick={() => { setType('div'); setView('level'); }}
-                className="group relative flex flex-col items-center justify-center gap-1 bg-purple-400 hover:bg-purple-500 text-white py-5 px-4 rounded-2xl shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9] active:translate-y-[6px] transition-all"
-              >
-                <span className="text-2xl font-bold">わり算</span>
-                <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">合計: {typePoints.div} pt</span>
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-200 group-hover:text-purple-100 text-3xl">÷</span>
-              </button>
+                return (
+                  <button 
+                    key={key}
+                    draggable
+                    onDragStart={(e) => {
+                      dragItem.current = index;
+                      dragNode.current = e.currentTarget;
+                      e.dataTransfer.effectAllowed = 'move';
+                      setTimeout(() => {
+                        if (dragNode.current) dragNode.current.style.opacity = '0.4';
+                      }, 0);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      if (dragItem.current !== null && dragItem.current !== index) {
+                        setOrder(prevOrder => {
+                          const newOrder = [...prevOrder];
+                          const draggedItem = newOrder.splice(dragItem.current, 1)[0];
+                          newOrder.splice(index, 0, draggedItem);
+                          dragItem.current = index; 
+                          return newOrder;
+                        });
+                      }
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnd={() => {
+                      if (dragNode.current) dragNode.current.style.opacity = '1';
+                      dragItem.current = null;
+                      dragNode.current = null;
+                    }}
+                    onClick={() => {
+                      if (key === 'print') {
+                        setView('print');
+                      } else {
+                        setType(key); 
+                        setView('level'); 
+                      }
+                    }}
+                    className={`${index === order.length - 1 && order.length % 2 !== 0 ? 'md:col-span-2' : ''} group relative flex flex-col items-center justify-center gap-1 ${btn.bg} text-white py-5 px-4 rounded-2xl ${btn.shadow} active:translate-y-[6px] transition-all cursor-move select-none`}
+                  >
+                    <span className="text-2xl font-bold">{btn.label}</span>
+                    {key !== 'print' && <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">合計: {typePoints[key]} pt</span>}
+                    <span className={`absolute ${btn.iconPos || 'right-4'} top-1/2 -translate-y-1/2 ${btn.iconColor} ${btn.iconSize}`}>{btn.iconText}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -827,7 +1043,12 @@
           { key: 'add', label: 'たしざん', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
           { key: 'sub', label: 'ひき算', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
           { key: 'mul', label: 'かけ算', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
-          { key: 'div', label: 'わり算', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' }
+          { key: 'div', label: 'わり算', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200' },
+          { key: 'approx', label: 'がい数', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
+          { key: 'number_line', label: '数直線', color: 'text-pink-700', bg: 'bg-pink-50', border: 'border-pink-200' },
+          { key: 'length', label: '長さ', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-200' },
+          { key: 'unit', label: '単位', color: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+          { key: 'word_problem', label: '文章問題', color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200' }
         ];
 
         const list = [];
@@ -971,19 +1192,40 @@
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                   {Object.keys(mistakes).map(type => {
                     const typeMistakes = mistakes[type];
-                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算' }[type];
+                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題' }[type];
                     
                     return Object.keys(typeMistakes).map(key => {
                       const m = typeMistakes[key];
                       return (
                         <div key={`${type}-${key}`} className="bg-white border-2 border-red-200 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="text-xs md:text-sm font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-1 rounded-md whitespace-nowrap">{typeLabel}</div>
-                            <div className="text-xl md:text-2xl font-bold text-gray-800 tracking-widest whitespace-nowrap">
-                              {m.n1} {m.op} {m.n2}
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="text-xs md:text-sm font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-1 rounded-md whitespace-nowrap shrink-0">{typeLabel}</div>
+                            <div className="text-xl md:text-2xl font-bold text-gray-800 tracking-widest whitespace-nowrap truncate min-w-0" 
+                                 title={
+                                   m.op === '数直線' ? `数直線 (開始${m.n1} 間隔${m.n2})` : 
+                                   m.op === '長さ' ? `${m.ansCm > 0 ? m.ansCm + 'cm ' : ''}${m.ansMm > 0 ? m.ansMm + 'mm' : m.ansCm === 0 ? '0cm' : ''}` : 
+                                   m.op === '単位' ? (
+                                     m.answerType === 'unit_m' || m.answerType === 'unit_large' ? `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'}` : 
+                                     m.answerType === 'unit_cm' || m.answerType === 'unit_small' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
+                                     m.answerType === 'unit_cm_from_m_cm' || m.answerType === 'unit_small_from_composite' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} ${m.q_cm || m.q_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
+                                     `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'} ${m.ans2}${m.unitSmall || 'cm'}`
+                                   ) : 
+                                   m.op === '文章問題' || m.op === 'がい数' ? m.text : 
+                                   `${m.n1} ${m.op} ${m.n2}`
+                                 }>
+                              {m.op === '数直線' ? `数直線 (開始${m.n1} 間隔${m.n2})` : 
+                               m.op === '長さ' ? `${m.ansCm > 0 ? m.ansCm + 'cm ' : ''}${m.ansMm > 0 ? m.ansMm + 'mm' : m.ansCm === 0 ? '0cm' : ''}` :
+                               m.op === '単位' ? (
+                                 m.answerType === 'unit_m' || m.answerType === 'unit_large' ? `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'}` : 
+                                 m.answerType === 'unit_cm' || m.answerType === 'unit_small' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
+                                 m.answerType === 'unit_cm_from_m_cm' || m.answerType === 'unit_small_from_composite' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} ${m.q_cm || m.q_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
+                                 `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'} ${m.ans2}${m.unitSmall || 'cm'}`
+                               ) :
+                               m.op === '文章問題' || m.op === 'がい数' ? m.text : 
+                               `${m.n1} ${m.op} ${m.n2}`}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 md:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
                             <div className="text-sm font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
                               {m.count}回
                             </div>
@@ -1046,6 +1288,11 @@
         sub: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', btn: 'bg-blue-400 hover:bg-blue-500 shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', title: 'ひき算' },
         mul: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', btn: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', title: 'かけ算' },
         div: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', btn: 'bg-purple-400 hover:bg-purple-500 shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', title: 'わり算' },
+        approx: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', btn: 'bg-orange-400 hover:bg-orange-500 shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c]', title: 'がい数' },
+        number_line: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', btn: 'bg-pink-400 hover:bg-pink-500 shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', title: '数直線' },
+        length: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', btn: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', title: '長さ' },
+        unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', btn: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', title: '単位' },
+        word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', btn: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', title: '文章問題' }
       }[type];
 
       return (
@@ -1103,6 +1350,11 @@
         sub: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', btnCount: 'bg-blue-400 hover:bg-blue-500 shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', btnTime: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', title: 'ひき算' },
         mul: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', btnCount: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', btnTime: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857] active:shadow-[0_0px_0_#047857]', title: 'かけ算' },
         div: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', btnCount: 'bg-purple-400 hover:bg-purple-500 shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', btnTime: 'bg-fuchsia-400 hover:bg-fuchsia-500 shadow-[0_6px_0_#a21caf] active:shadow-[0_0px_0_#a21caf]', title: 'わり算' },
+        approx: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', btnCount: 'bg-orange-400 hover:bg-orange-500 shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c]', btnTime: 'bg-amber-400 hover:bg-amber-500 shadow-[0_6px_0_#d97706] active:shadow-[0_0px_0_#d97706]', title: 'がい数' },
+        number_line: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', btnCount: 'bg-pink-400 hover:bg-pink-500 shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', btnTime: 'bg-rose-400 hover:bg-rose-500 shadow-[0_6px_0_#9f1239] active:shadow-[0_0px_0_#9f1239]', title: '数直線' },
+        length: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', btnCount: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', btnTime: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857] active:shadow-[0_0px_0_#047857]', title: '長さ' },
+        unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', btnCount: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', btnTime: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0284c7] active:shadow-[0_0px_0_#0284c7]', title: '単位' },
+        word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', btnCount: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', btnTime: 'bg-violet-400 hover:bg-violet-500 shadow-[0_6px_0_#5b21b6] active:shadow-[0_0px_0_#5b21b6]', title: '文章問題' }
       }[type];
 
       const totalPoints = [
@@ -1221,12 +1473,23 @@
     // クイズ画面
     // ---------------------------------------------------------
     const QuizView = ({ type, level, course, setView, setResult }) => {
-      const [problem, setProblem] = useState({ n1: 0, n2: 0, op: '+', ans: 0 });
+      const [problem, setProblem] = useState({ n1: 0, n2: 0, op: '+', ans: 0, labels: [], count: 5, answerType: 'integer' });
       const [userInput, setUserInput] = useState('');
       const [userInputRem, setUserInputRem] = useState('');
-      const [focusedInput, setFocusedInput] = useState('ans'); // 'ans' or 'rem'
+      const [userInputNum, setUserInputNum] = useState('');
+      const [userInputDen, setUserInputDen] = useState('');
+      const [userInputInt, setUserInputInt] = useState('');
+      const [userInputCm, setUserInputCm] = useState('');
+      const [userInputMm, setUserInputMm] = useState('');
+      const [userInputUnit1, setUserInputUnit1] = useState('');
+      const [userInputUnit2, setUserInputUnit2] = useState('');
+      const [userInputApprox1, setUserInputApprox1] = useState('');
+      const [userInputApprox2, setUserInputApprox2] = useState('');
+      
+      const [focusedInput, setFocusedInput] = useState('ans'); // 'ans', 'rem', 'num', 'den', 'int', 'cm', 'mm', 'unit1', 'unit2', 'approx1', 'approx2'
       const [status, setStatus] = useState('idle');
       const [score, setScore] = useState(0);
+      const [currentProblemMistakes, setCurrentProblemMistakes] = useState(0); 
       
       const [countdown, setCountdown] = useState(3);
       const [startTime, setStartTime] = useState(null);
@@ -1246,12 +1509,48 @@
         sub: { bg: 'bg-blue-50', text: 'text-blue-500', title: 'ひき算' },
         mul: { bg: 'bg-green-50', text: 'text-green-500', title: 'かけ算' },
         div: { bg: 'bg-purple-50', text: 'text-purple-500', title: 'わり算' },
+        approx: { bg: 'bg-orange-50', text: 'text-orange-500', title: 'がい数' },
+        number_line: { bg: 'bg-pink-50', text: 'text-pink-500', title: '数直線' },
+        length: { bg: 'bg-teal-50', text: 'text-teal-500', title: '長さ' },
+        unit: { bg: 'bg-cyan-50', text: 'text-cyan-500', title: '単位' },
+        word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-500', title: '文章問題' }
       }[type];
+
+      const isNumberLine = problem.op === '数直線';
+      const isLength = problem.op === '長さ';
+      const isUnit = problem.op === '単位';
+      const isWordProblem = problem.op === '文章問題';
+      const isApprox = problem.op === 'がい数';
 
       const handleGetHint = async () => {
         setIsHintLoading(true);
         const sysPrompt = "小学生向けの算数の先生として、挨拶や余計な言葉は完全に省き、計算の解き方のヒントだけを必ず40文字以内で短く教えてください。ひらがなと簡単な漢字のみを使ってください。";
-        const pText = `「${problem.n1} ${problem.op} ${problem.n2}」のヒントは？`;
+        let pText = '';
+        if (isNumberLine) {
+          pText = `数直線の問題で、開始が${problem.n1}、1目盛りの間隔が${problem.n2}のとき、左から${problem.missingIndex + 1}番目の目盛りの数値を当てる問題のヒントは？(答えの形式は${problem.answerType==='decimal'?'小数':problem.answerType.startsWith('fraction')?'分数':'整数'}です)`;
+        } else if (isLength) {
+          pText = `ものさしの問題で、矢印が指している長さは？(正解は ${problem.ansTotalMm} mm です。子供に考え方を教えて)`;
+        } else if (isUnit) {
+          const lUnit = problem.unitLarge || 'm';
+          const sUnit = problem.unitSmall || 'cm';
+          const multi = problem.unitType === 'weight' ? 1000 : 100;
+          pText = `単位の変換問題で、「${
+            problem.answerType === 'unit_large' ? `${problem.q_total_small}${sUnit} は何 ${lUnit}` :
+            problem.answerType === 'unit_small' ? `${problem.q_large}${lUnit} は何 ${sUnit}` :
+            problem.answerType === 'unit_small_from_composite' ? `${problem.q_large}${lUnit} ${problem.q_small}${sUnit} は何 ${sUnit}` :
+            `${problem.q_total_small}${sUnit} は何 ${lUnit} 何 ${sUnit}`
+          }」という問題のヒントは？(1${lUnit}=${multi}${sUnit}であることを教えて)`;
+        } else if (isWordProblem) {
+          pText = `文章問題「${problem.text}」のヒントは？(答えは ${problem.ans} です。式と解き方を教えて)`;
+        } else if (isApprox) {
+          if (problem.answerType === 'approx_range') {
+            pText = `「${problem.text}」のヒントは？(答えは ${problem.ans1}以上、${problem.ans2}未満 です。考え方を教えて)`;
+          } else {
+            pText = `「${problem.text}」のヒントは？(答えは ${problem.ans} です。どの位の数字を見ればいいか教えて)`;
+          }
+        } else {
+          pText = `「${problem.n1} ${problem.op} ${problem.n2}」のヒントは？`;
+        }
         
         const response = await fetchGeminiContent(pText, sysPrompt);
         setHint(response);
@@ -1259,16 +1558,43 @@
       };
 
       useEffect(() => {
-        setProblem(generateProblem(type, level));
+        const newProb = generateProblem(type, level);
+        setProblem(newProb);
         setUserInput('');
         setUserInputRem('');
-        setFocusedInput('ans');
+        setUserInputNum('');
+        setUserInputDen('');
+        setUserInputInt('');
+        setUserInputCm('');
+        setUserInputMm('');
+        setUserInputUnit1('');
+        setUserInputUnit2('');
+        setUserInputApprox1('');
+        setUserInputApprox2('');
+        
+        if (newProb.answerType === 'fraction_proper' || newProb.answerType === 'fraction_improper') {
+           setFocusedInput('num');
+        } else if (newProb.answerType === 'fraction_mixed') {
+           setFocusedInput('int');
+        } else if (newProb.answerType === 'length_cm' || newProb.answerType === 'length_cm_mm') {
+           setFocusedInput('cm');
+        } else if (newProb.answerType === 'length_mm') {
+           setFocusedInput('mm');
+        } else if (newProb.answerType === 'unit_composite_from_small' || newProb.answerType === 'unit_large' || newProb.answerType === 'unit_small' || newProb.answerType === 'unit_small_from_composite') {
+           setFocusedInput('unit1');
+        } else if (newProb.answerType === 'approx_range') {
+           setFocusedInput('approx1');
+        } else {
+           setFocusedInput('ans');
+        }
+        
         setStatus('idle');
         setScore(0);
         setCountdown(3);
         setStartTime(null);
         setNow(null);
         setMistakes(0);
+        setCurrentProblemMistakes(0);
         setClearKey(Date.now());
         setHint(""); 
         isFinishedRef.current = false;
@@ -1359,19 +1685,58 @@
         if (countdown !== null) return;
         if (status === 'correct') return;
         if (focusedInput === 'ans') {
+          if (numStr === '.' && userInput.includes('.')) return;
           setUserInput(prev => prev.length < 6 ? prev + numStr : prev);
-        } else {
+        } else if (focusedInput === 'rem') {
           setUserInputRem(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'num') {
+          setUserInputNum(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'den') {
+          setUserInputDen(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'int') {
+          setUserInputInt(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'cm') {
+          setUserInputCm(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'mm') {
+          setUserInputMm(prev => prev.length < 2 ? prev + numStr : prev);
+        } else if (focusedInput === 'unit1') {
+          if (numStr === '.' && userInputUnit1.includes('.')) return;
+          setUserInputUnit1(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'unit2') {
+          if (numStr === '.' && userInputUnit2.includes('.')) return;
+          setUserInputUnit2(prev => prev.length < 4 ? prev + numStr : prev);
+        } else if (focusedInput === 'approx1') {
+          setUserInputApprox1(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'approx2') {
+          setUserInputApprox2(prev => prev.length < 6 ? prev + numStr : prev);
         }
-      }, [status, countdown, focusedInput]);
+      }, [status, countdown, focusedInput, userInput, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2]);
 
       const handleDelete = useCallback(() => {
         if (countdown !== null) return;
         if (status === 'correct') return;
         if (focusedInput === 'ans') {
           setUserInput(prev => prev.slice(0, -1));
-        } else {
+        } else if (focusedInput === 'rem') {
           setUserInputRem(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'num') {
+          setUserInputNum(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'den') {
+          setUserInputDen(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'int') {
+          setUserInputInt(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'cm') {
+          setUserInputCm(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'mm') {
+          setUserInputMm(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'unit1') {
+          setUserInputUnit1(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'unit2') {
+          setUserInputUnit2(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'approx1') {
+          setUserInputApprox1(prev => prev.slice(0, -1));
+        } else if (focusedInput === 'approx2') {
+          setUserInputApprox2(prev => prev.slice(0, -1));
         }
       }, [status, countdown, focusedInput]);
 
@@ -1379,12 +1744,45 @@
         if (countdown !== null) return;
         if (status === 'correct') return;
         
+        let isCorrectAns = false;
+        let isCorrectRem = true;
         const hasRem = problem.rem !== undefined;
-        if (!userInput) return;
-        if (hasRem && !userInputRem) return;
+
+        if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) {
+           if (!userInput) return;
+           if (hasRem && !userInputRem) return;
+           isCorrectAns = parseInt(userInput) === problem.ans;
+           isCorrectRem = hasRem ? parseInt(userInputRem) === problem.rem : true;
+        } else if (problem.answerType === 'decimal') {
+           if (!userInput) return;
+           isCorrectAns = parseFloat(userInput) === problem.ans;
+        } else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') {
+           if (!userInputNum || !userInputDen) return;
+           isCorrectAns = parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen;
+        } else if (problem.answerType === 'fraction_mixed') {
+           if (!userInputInt || !userInputNum || !userInputDen) return;
+           isCorrectAns = parseInt(userInputInt) === problem.ansInt && parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen;
+        } else if (problem.answerType === 'length_cm') {
+           if (!userInputCm) return;
+           isCorrectAns = parseInt(userInputCm) === problem.ansCm;
+        } else if (problem.answerType === 'length_mm') {
+           if (!userInputMm) return;
+           isCorrectAns = parseInt(userInputMm) === problem.ansMm;
+        } else if (problem.answerType === 'length_cm_mm') {
+           if (!userInputCm || !userInputMm) return;
+           isCorrectAns = parseInt(userInputCm) === problem.ansCm && parseInt(userInputMm) === problem.ansMm;
+        } else if (problem.answerType === 'unit_composite_from_small') {
+           if (!userInputUnit1 || !userInputUnit2) return;
+           isCorrectAns = parseFloat(userInputUnit1) === problem.ans1 && parseFloat(userInputUnit2) === problem.ans2;
+        } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
+           if (!userInputUnit1) return;
+           isCorrectAns = parseFloat(userInputUnit1) === problem.ans1;
+        } else if (problem.answerType === 'approx_range') {
+           if (!userInputApprox1 || !userInputApprox2) return;
+           isCorrectAns = parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2;
+        }
         
-        const isCorrectAns = parseInt(userInput) === problem.ans;
-        const isCorrectRem = hasRem ? parseInt(userInputRem) === problem.rem : true;
+        const delayTime = isWordProblem ? 3000 : 750;
         
         if (isCorrectAns && isCorrectRem) {
           playCorrectSound();
@@ -1418,62 +1816,201 @@
               
               setResult({ score: newScore, timeElapsed: finalTime, mode: 'count', value: course.value, isNewRecord, earnedPoints });
               setView('result');
-            }, 750);
+            }, delayTime);
           } else {
             setTimeout(() => {
-              setProblem(prev => generateProblem(type, level, prev));
+              const newProb = generateProblem(type, level, problem);
+              setProblem(newProb);
               setUserInput('');
               setUserInputRem('');
-              setFocusedInput('ans');
+              setUserInputNum('');
+              setUserInputDen('');
+              setUserInputInt('');
+              setUserInputCm('');
+              setUserInputMm('');
+              setUserInputUnit1('');
+              setUserInputUnit2('');
+              setUserInputApprox1('');
+              setUserInputApprox2('');
+              
+              if (newProb.answerType === 'fraction_proper' || newProb.answerType === 'fraction_improper') {
+                 setFocusedInput('num');
+              } else if (newProb.answerType === 'fraction_mixed') {
+                 setFocusedInput('int');
+              } else if (newProb.answerType === 'length_cm' || newProb.answerType === 'length_cm_mm') {
+                 setFocusedInput('cm');
+              } else if (newProb.answerType === 'length_mm') {
+                 setFocusedInput('mm');
+              } else if (newProb.answerType === 'unit_composite_from_small' || newProb.answerType === 'unit_large' || newProb.answerType === 'unit_small' || newProb.answerType === 'unit_small_from_composite') {
+                 setFocusedInput('unit1');
+              } else if (newProb.answerType === 'approx_range') {
+                 setFocusedInput('approx1');
+              } else {
+                 setFocusedInput('ans');
+              }
+              
               setStatus('idle');
               setHint(""); 
               setClearKey(Date.now());
-            }, 750);
+              setCurrentProblemMistakes(0);
+            }, delayTime);
           }
         } else {
           saveMistake(type, problem);
           setStatus('wrong');
           setUserInput('');
           setUserInputRem('');
-          setFocusedInput('ans');
+          setUserInputNum('');
+          setUserInputDen('');
+          setUserInputInt('');
+          setUserInputCm('');
+          setUserInputMm('');
+          setUserInputUnit1('');
+          setUserInputUnit2('');
+          setUserInputApprox1('');
+          setUserInputApprox2('');
+          
+          if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') {
+             setFocusedInput('num');
+          } else if (problem.answerType === 'fraction_mixed') {
+             setFocusedInput('int');
+          } else if (problem.answerType === 'length_cm' || problem.answerType === 'length_cm_mm') {
+             setFocusedInput('cm');
+          } else if (problem.answerType === 'length_mm') {
+             setFocusedInput('mm');
+          } else if (problem.answerType === 'unit_composite_from_small' || problem.answerType === 'unit_large' || problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite') {
+             setFocusedInput('unit1');
+          } else if (problem.answerType === 'approx_range') {
+             setFocusedInput('approx1');
+          } else {
+             setFocusedInput('ans');
+          }
           const newMistakes = mistakes + 1;
           setMistakes(newMistakes);
+          setCurrentProblemMistakes(prev => prev + 1);
+          
+          const wrongDelayTime = isWordProblem ? 3000 : 500;
+          
           if (newMistakes >= 3) {
             isFinishedRef.current = true;
             let earnedPoints = score * level;
             setTimeout(() => {
               setResult({ isGameOver: true, reason: 'mistakes', earnedPoints });
               setView('result');
-            }, 500);
+            }, wrongDelayTime);
           } else {
-            setTimeout(() => setStatus('idle'), 500);
+            setTimeout(() => setStatus('idle'), wrongDelayTime);
           }
         }
-      }, [userInput, userInputRem, status, problem.ans, problem.rem, type, level, countdown, score, course, startTime, setResult, setView, mistakes]);
+      }, [userInput, userInputRem, userInputNum, userInputDen, userInputInt, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, status, problem, type, level, countdown, score, course, startTime, setResult, setView, mistakes, isWordProblem]);
 
       useEffect(() => {
         if (countdown === null && status !== 'correct') {
           const hasRem = problem.rem !== undefined;
-          if (hasRem) {
-            if (focusedInput === 'ans' && userInput && parseInt(userInput) === problem.ans) {
-              setFocusedInput('rem');
+          if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) {
+            if (hasRem) {
+              if (focusedInput === 'ans' && userInput && parseInt(userInput) === problem.ans) {
+                setFocusedInput('rem');
+              }
+              if (userInput && userInputRem && parseInt(userInput) === problem.ans && parseInt(userInputRem) === problem.rem) {
+                handleCheck();
+              }
+            } else {
+              if (userInput && parseInt(userInput) === problem.ans) {
+                handleCheck();
+              }
             }
-            if (userInput && userInputRem && parseInt(userInput) === problem.ans && parseInt(userInputRem) === problem.rem) {
-              handleCheck();
-            }
-          } else {
-            if (userInput && parseInt(userInput) === problem.ans) {
-              handleCheck();
-            }
+          } else if (problem.answerType === 'decimal') {
+             if (userInput && parseFloat(userInput) === problem.ans) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'length_cm_mm') {
+             if (focusedInput === 'cm' && userInputCm && parseInt(userInputCm) === problem.ansCm) {
+               setFocusedInput('mm');
+             }
+             if (userInputCm && userInputMm && parseInt(userInputCm) === problem.ansCm && parseInt(userInputMm) === problem.ansMm) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'length_cm') {
+             if (userInputCm && parseInt(userInputCm) === problem.ansCm) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'length_mm') {
+             if (userInputMm && parseInt(userInputMm) === problem.ansMm) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'unit_composite_from_small') {
+             if (focusedInput === 'unit1' && userInputUnit1 && parseFloat(userInputUnit1) === problem.ans1) {
+               setFocusedInput('unit2');
+             }
+             if (userInputUnit1 && userInputUnit2 && parseFloat(userInputUnit1) === problem.ans1 && parseFloat(userInputUnit2) === problem.ans2) {
+               handleCheck();
+             }
+          } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
+             if (userInputUnit1 && parseFloat(userInputUnit1) === problem.ans1) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'approx_range') {
+             if (focusedInput === 'approx1' && userInputApprox1 && parseInt(userInputApprox1) === problem.ans1) {
+               setFocusedInput('approx2');
+             }
+             if (userInputApprox1 && userInputApprox2 && parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2) {
+               handleCheck();
+             }
+          }
+
+          // --- 3桁以上入力時の自動不正解判定 ---
+          let shouldAutoCheckWrong = false;
+          const checkWrong = (val, correct) => {
+            if (!val || val.length < 3) return false;
+            const cStr = String(correct);
+            if (val === cStr) return false; 
+            if (cStr.startsWith(val)) return false; 
+            return true;
+          };
+
+          if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) {
+            if (focusedInput === 'ans' && checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'rem' && checkWrong(userInputRem, problem.rem)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'decimal') {
+            if (checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') {
+            if (focusedInput === 'num' && checkWrong(userInputNum, problem.ansNum)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'den' && checkWrong(userInputDen, problem.ansDen)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'fraction_mixed') {
+            if (focusedInput === 'int' && checkWrong(userInputInt, problem.ansInt)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'num' && checkWrong(userInputNum, problem.ansNum)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'den' && checkWrong(userInputDen, problem.ansDen)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'length_cm') {
+            if (checkWrong(userInputCm, problem.ansCm)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'length_mm') {
+            if (checkWrong(userInputMm, problem.ansMm)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'length_cm_mm') {
+            if (focusedInput === 'cm' && checkWrong(userInputCm, problem.ansCm)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'mm' && checkWrong(userInputMm, problem.ansMm)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'unit_composite_from_small') {
+            if (focusedInput === 'unit1' && checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'unit2' && checkWrong(userInputUnit2, problem.ans2)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
+            if (checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'approx_range') {
+            if (focusedInput === 'approx1' && checkWrong(userInputApprox1, problem.ans1)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'approx2' && checkWrong(userInputApprox2, problem.ans2)) shouldAutoCheckWrong = true;
+          }
+
+          if (shouldAutoCheckWrong) {
+            handleCheck();
           }
         }
-      }, [userInput, userInputRem, problem.ans, problem.rem, status, handleCheck, countdown, focusedInput]);
+      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, handleCheck, countdown, focusedInput, isLength, isUnit, isWordProblem, isApprox]);
 
       useEffect(() => {
         if (countdown !== null) return;
         const handleKeyDown = (e) => {
           if (e.key >= '0' && e.key <= '9') {
             handleInput(e.key);
+          } else if (e.key === '.') {
+            handleInput('.');
           } else if (e.key === 'Backspace') {
             handleDelete();
           } else if (e.key === 'Enter') {
@@ -1484,41 +2021,108 @@
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [handleInput, handleDelete, handleCheck, countdown]);
 
-      const renderNumpad = () => (
-        <div className="w-full max-w-sm grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2 relative z-10">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+      // 正解を表示するためのヘルパー関数
+      const renderCorrectAnswer = (p) => {
+        if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
+          return (
+            <div className="flex flex-col items-center inline-flex align-middle">
+              <span>{p.ansNum}</span>
+              <div className="w-8 border-b-2 border-red-600 my-0.5"></div>
+              <span>{p.ansDen}</span>
+            </div>
+          );
+        } else if (p.answerType === 'fraction_mixed') {
+          return (
+            <div className="flex items-center inline-flex align-middle gap-1">
+              <span>{p.ansInt}</span>
+              <div className="flex flex-col items-center">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-0.5"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            </div>
+          );
+        } else if (p.answerType === 'integer' || (!p.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isNumberLine)) {
+          return p.rem !== undefined ? <span>{p.ans} あまり {p.rem}</span> : <span>{p.ans}</span>;
+        } else if (p.answerType === 'length_cm') {
+          return <span>{p.ansCm} cm</span>;
+        } else if (p.answerType === 'length_mm') {
+          return <span>{p.ansMm} mm</span>;
+        } else if (p.answerType === 'length_cm_mm') {
+          return <span>{p.ansCm} cm {p.ansMm} mm</span>;
+        } else if (p.answerType === 'unit_large') {
+          return <span>{p.ans1} {p.unitLarge}</span>;
+        } else if (p.answerType === 'unit_small' || p.answerType === 'unit_small_from_composite') {
+          return <span>{p.ans1} {p.unitSmall}</span>;
+        } else if (p.answerType === 'unit_composite_from_small') {
+          return <span>{p.ans1} {p.unitLarge} {p.ans2} {p.unitSmall}</span>;
+        } else if (p.answerType === 'approx_range') {
+          return <span className="text-2xl md:text-3xl">{p.ans1} 以上、 {p.ans2} 未満</span>;
+        }
+        return <span>{p.ans}</span>;
+      };
+
+      const renderNumpad = () => {
+        const canSubmit = !(countdown !== null || (
+          (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) ? (!userInput || (problem.rem !== undefined && !userInputRem)) :
+          problem.answerType === 'decimal' ? !userInput :
+          (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') ? (!userInputNum || !userInputDen) :
+          problem.answerType === 'fraction_mixed' ? (!userInputInt || !userInputNum || !userInputDen) :
+          problem.answerType === 'length_cm' ? !userInputCm :
+          problem.answerType === 'length_mm' ? !userInputMm :
+          problem.answerType === 'length_cm_mm' ? (!userInputCm || !userInputMm) :
+          (problem.answerType === 'unit_large' || problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite') ? !userInputUnit1 :
+          problem.answerType === 'unit_composite_from_small' ? (!userInputUnit1 || !userInputUnit2) :
+          problem.answerType === 'approx_range' ? (!userInputApprox1 || !userInputApprox2) :
+          true
+        ));
+
+        return (
+          <div className={`w-full ${isNumberLine || isLength || isUnit || isWordProblem || isApprox ? 'max-w-xl' : 'max-w-md'} flex flex-col gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2 relative z-10`}>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                <button
+                  key={num}
+                  onClick={() => handleInput(num.toString())}
+                  disabled={countdown !== null}
+                  className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                onClick={handleDelete}
+                disabled={countdown !== null}
+                className={`bg-gray-200 text-sm sm:text-xl md:text-2xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#d1d5db] active:shadow-[0_0px_0_#d1d5db] active:translate-y-[4px]'}`}
+              >
+                けす
+              </button>
+              <button
+                onClick={() => handleInput('0')}
+                disabled={countdown !== null}
+                className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
+              >
+                0
+              </button>
+              <button
+                onClick={() => handleInput('.')}
+                disabled={countdown !== null || (problem.answerType !== 'decimal' && !problem.allowDecimal)}
+                className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null || (problem.answerType !== 'decimal' && !problem.allowDecimal) ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'} ${problem.answerType !== 'decimal' && !problem.allowDecimal ? 'invisible' : ''}`}
+              >
+                .
+              </button>
+            </div>
             <button
-              key={num}
-              onClick={() => handleInput(num.toString())}
-              disabled={countdown !== null}
-              className={`bg-white text-xl sm:text-3xl font-bold text-gray-700 py-3 sm:py-4 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
+              onClick={handleCheck}
+              disabled={!canSubmit}
+              className={`text-lg sm:text-2xl md:text-3xl font-bold py-4 sm:py-6 md:py-8 rounded-xl sm:rounded-2xl transition-all w-full mt-2 ${
+                !canSubmit ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
             >
-              {num}
+              こたえる
             </button>
-          ))}
-          <button
-            onClick={handleDelete}
-            disabled={countdown !== null}
-            className={`bg-gray-200 text-sm sm:text-xl font-bold text-gray-700 py-3 sm:py-4 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#d1d5db] active:shadow-[0_0px_0_#d1d5db] active:translate-y-[4px]'}`}
-          >
-            けす
-          </button>
-          <button
-            onClick={() => handleInput('0')}
-            disabled={countdown !== null}
-            className={`bg-white text-xl sm:text-3xl font-bold text-gray-700 py-3 sm:py-4 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
-          >
-            0
-          </button>
-          <button
-            onClick={handleCheck}
-            disabled={countdown !== null || !userInput || (problem.rem !== undefined && !userInputRem)}
-            className={`text-sm sm:text-xl font-bold py-3 sm:py-4 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null || !userInput || (problem.rem !== undefined && !userInputRem) ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
-          >
-            こたえる
-          </button>
-        </div>
-      );
+          </div>
+        );
+      };
 
       return (
         <div className={`flex flex-col min-h-screen ${theme.bg} font-sans`}>
@@ -1569,111 +2173,334 @@
               </div>
             )}
 
-            <div className="w-full h-full flex-1 bg-white rounded-t-xl sm:rounded-t-3xl shadow-lg relative overflow-hidden flex flex-row min-h-[1600px] md:min-h-[2000px]">
+            <div className={`w-full h-full flex-1 bg-white rounded-t-xl sm:rounded-t-3xl shadow-lg relative overflow-hidden flex flex-col min-h-[1600px] md:min-h-[2000px]`}>
               
-              {/* 左側: 横式の計算問題と答えの入力エリア・テンキー (50%) */}
-              <div className="w-1/2 flex flex-col items-center justify-start p-2 sm:p-6 md:p-10 order-1 bg-white border-r-2 border-gray-100 z-10 overflow-y-auto relative h-full">
-                
-                {status === 'correct' && (
-                  <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
-                    <Circle className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-green-500/80 inline-block" strokeWidth={3} />
+              {/* 文章問題・がい数の場合の上部テキスト表示エリア */}
+              {(isWordProblem || isApprox) && (
+                <div className={`w-full p-4 sm:p-8 z-20 shrink-0 border-b-4 ${isWordProblem ? 'bg-indigo-50 border-indigo-100' : 'bg-orange-50 border-orange-100'}`}>
+                  <div className={`text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed whitespace-pre-wrap text-left w-full max-w-4xl mx-auto border-l-4 pl-4 bg-white p-4 rounded-r-xl shadow-sm ${isWordProblem ? 'border-indigo-400' : 'border-orange-400'}`}>
+                    {problem.text}
                   </div>
-                )}
-                {status === 'wrong' && (
-                  <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
-                    <X className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-red-500/80 inline-block" strokeWidth={3} />
-                  </div>
-                )}
-
-                <div className="text-3xl sm:text-5xl md:text-7xl font-bold text-center tracking-widest text-gray-800 flex justify-center items-center gap-1 sm:gap-3 md:gap-5 mt-2 sm:mt-4 md:mt-6">
-                  <span>{problem.n1}</span>
-                  <span className={theme.text}>{problem.op}</span>
-                  <span>{problem.n2}</span>
-                  <span className={theme.text}>=</span>
                 </div>
-                
-                <div className="mt-4 sm:mt-6 flex justify-center items-end gap-1 sm:gap-3">
-                  <div 
-                    onClick={() => setFocusedInput('ans')}
-                    className={`cursor-pointer w-20 h-16 sm:w-32 sm:h-24 md:w-40 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'ans' ? 'ring-4 ring-orange-400' : ''} ${userInput ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                  >
-                    {userInput || '?'}
-                  </div>
+              )}
+
+              <div className="w-full flex-1 flex flex-row relative h-full">
+                {/* 左側: 横式の計算問題と答えの入力エリア・テンキー (50% または 100%) */}
+                <div className={`flex flex-col items-center justify-start p-2 sm:p-6 md:p-10 order-1 bg-white z-10 overflow-y-auto relative h-full ${isNumberLine || isLength || isUnit || isWordProblem || isApprox ? 'w-full' : 'w-1/2 border-r-2 border-gray-100'}`}>
                   
-                  {problem.rem !== undefined && (
-                    <React.Fragment>
-                      <div className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 mb-2 sm:mb-4 whitespace-nowrap">あまり</div>
-                      <div 
-                        onClick={() => setFocusedInput('rem')}
-                        className={`cursor-pointer w-16 h-16 sm:w-28 sm:h-24 md:w-32 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'rem' ? 'ring-4 ring-orange-400' : ''} ${userInputRem ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                  {status === 'correct' && (
+                    <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
+                      <Circle className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-green-500/80 inline-block" strokeWidth={3} />
+                    </div>
+                  )}
+                  {status === 'wrong' && (
+                    <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
+                      <X className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-red-500/80 inline-block" strokeWidth={3} />
+                    </div>
+                  )}
+
+                  {isNumberLine ? (
+                    <div className="w-full flex justify-center items-center py-6 mt-4 sm:mt-8 relative px-2 sm:px-10">
+                      <svg width="100%" height="240" viewBox="0 0 1000 240" className="overflow-visible">
+                        <line x1="40" y1="120" x2="960" y2="120" stroke="#4b5563" strokeWidth="6" strokeLinecap="round" />
+                        <polygon points="960,110 980,120 960,130" fill="#4b5563" />
+                        {problem.labels && problem.labels.map((label, i) => {
+                          const x = 80 + (840 / (problem.count - 1)) * i;
+                          return (
+                            <g key={i}>
+                              <line x1={x} y1="100" x2={x} y2="140" stroke="#4b5563" strokeWidth="4" strokeLinecap="round" />
+                              {typeof label === 'object' ? (
+                                  label.int > 0 ? (
+                                    <g>
+                                      <text x={x-30} y="200" textAnchor="middle" fontSize="48" fontWeight="bold" fill="#4b5563">{label.int}</text>
+                                      <text x={x+20} y="180" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.num}</text>
+                                      <line x1={x} y1="190" x2={x+40} y2="190" stroke="#4b5563" strokeWidth="3" />
+                                      <text x={x+20} y="230" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.den}</text>
+                                    </g>
+                                  ) : (
+                                    <g>
+                                      <text x={x} y="180" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.num}</text>
+                                      <line x1={x-20} y1="190" x2={x+20} y2="190" stroke="#4b5563" strokeWidth="3" />
+                                      <text x={x} y="230" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.den}</text>
+                                    </g>
+                                  )
+                              ) : (
+                                  <text x={x} y="200" textAnchor="middle" fontSize={label === '?' ? "72" : "48"} fontWeight="bold" fill={label === '?' ? "#f97316" : "#4b5563"}>
+                                    {label}
+                                  </text>
+                              )}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  ) : isLength ? (
+                    <div className="w-full flex justify-center items-center py-6 mt-4 sm:mt-8 relative px-2 sm:px-10">
+                      <RulerSVG totalMm={problem.ansTotalMm} maxCm={problem.maxCm} />
+                    </div>
+                  ) : isUnit ? (
+                    <div className="text-3xl sm:text-4xl md:text-6xl font-bold text-center tracking-widest text-gray-800 flex flex-wrap justify-center items-center gap-1 sm:gap-3 md:gap-5 mt-2 sm:mt-4 md:mt-6 px-2">
+                      {(problem.answerType === 'unit_large') && <span>{problem.q_total_small}{problem.unitSmall} =</span>}
+                      {(problem.answerType === 'unit_small') && <span>{problem.q_large}{problem.unitLarge} =</span>}
+                      {(problem.answerType === 'unit_small_from_composite') && <span>{problem.q_large}{problem.unitLarge} {problem.q_small}{problem.unitSmall} =</span>}
+                      {(problem.answerType === 'unit_composite_from_small') && <span>{problem.q_total_small}{problem.unitSmall} =</span>}
+                    </div>
+                  ) : (!isWordProblem && !isApprox) ? (
+                    <div className="text-3xl sm:text-5xl md:text-7xl font-bold text-center tracking-widest text-gray-800 flex justify-center items-center gap-1 sm:gap-3 md:gap-5 mt-2 sm:mt-4 md:mt-6">
+                      <span>{problem.n1}</span>
+                      <span className={theme.text}>{problem.op}</span>
+                      <span>{problem.n2}</span>
+                      <span className={theme.text}>=</span>
+                    </div>
+                  ) : null}
+                  
+                  <div className={`mt-4 sm:mt-6 flex justify-center items-end gap-1 sm:gap-3 ${isWordProblem || isApprox ? 'pt-4' : ''}`}>
+                     {problem.answerType === 'integer' || problem.answerType === 'decimal' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox) ? (
+                        <div 
+                          onClick={() => setFocusedInput('ans')}
+                          className={`cursor-pointer w-24 h-16 sm:w-40 sm:h-28 md:w-48 md:h-32 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'ans' ? 'ring-4 ring-orange-400' : ''} ${userInput ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                        >
+                          {userInput || '?'}
+                        </div>
+                     ) : problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper' ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div 
+                            onClick={() => setFocusedInput('num')}
+                            className={`cursor-pointer w-24 h-20 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'num' ? 'ring-4 ring-orange-400' : ''} ${userInputNum ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputNum || '?'}
+                          </div>
+                          <div className="w-32 sm:w-40 h-2 bg-gray-800 rounded-full"></div>
+                          <div 
+                            onClick={() => setFocusedInput('den')}
+                            className={`cursor-pointer w-24 h-20 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'den' ? 'ring-4 ring-orange-400' : ''} ${userInputDen ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputDen || '?'}
+                          </div>
+                        </div>
+                     ) : problem.answerType === 'fraction_mixed' ? (
+                        <div className="flex items-center gap-4">
+                          <div 
+                            onClick={() => setFocusedInput('int')}
+                            className={`cursor-pointer w-28 h-32 sm:w-36 sm:h-40 bg-gray-100 rounded-xl flex items-center justify-center text-5xl sm:text-6xl font-bold shadow-inner ${focusedInput === 'int' ? 'ring-4 ring-orange-400' : ''} ${userInputInt ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputInt || '?'}
+                          </div>
+                          <div className="flex flex-col items-center gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('num')}
+                              className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-20 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'num' ? 'ring-4 ring-orange-400' : ''} ${userInputNum ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputNum || '?'}
+                            </div>
+                            <div className="w-28 sm:w-40 h-2 bg-gray-800 rounded-full"></div>
+                            <div 
+                              onClick={() => setFocusedInput('den')}
+                              className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-20 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'den' ? 'ring-4 ring-orange-400' : ''} ${userInputDen ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputDen || '?'}
+                            </div>
+                          </div>
+                        </div>
+                     ) : problem.answerType === 'length_cm' ? (
+                        <div className="flex items-center gap-2">
+                          <div 
+                            onClick={() => setFocusedInput('cm')}
+                            className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'cm' ? 'ring-4 ring-orange-400' : ''} ${userInputCm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputCm || '?'}
+                          </div>
+                          <span className="text-2xl sm:text-4xl font-bold text-gray-800">cm</span>
+                        </div>
+                     ) : problem.answerType === 'length_mm' ? (
+                        <div className="flex items-center gap-2">
+                          <div 
+                            onClick={() => setFocusedInput('mm')}
+                            className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputMm || '?'}
+                          </div>
+                          <span className="text-2xl sm:text-4xl font-bold text-gray-800">mm</span>
+                        </div>
+                     ) : problem.answerType === 'length_cm_mm' ? (
+                        <div className="flex items-center gap-2 sm:gap-4">
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('cm')}
+                              className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'cm' ? 'ring-4 ring-orange-400' : ''} ${userInputCm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputCm || '?'}
+                            </div>
+                            <span className="text-xl sm:text-3xl font-bold text-gray-800">cm</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('mm')}
+                              className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputMm || '?'}
+                            </div>
+                            <span className="text-xl sm:text-3xl font-bold text-gray-800">mm</span>
+                          </div>
+                        </div>
+                     ) : problem.answerType === 'unit_large' ? (
+                        <div className="flex items-center gap-2">
+                          <div 
+                            onClick={() => setFocusedInput('unit1')}
+                            className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'unit1' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputUnit1 || '?'}
+                          </div>
+                          <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitLarge}</span>
+                        </div>
+                     ) : problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite' ? (
+                        <div className="flex items-center gap-2">
+                          <div 
+                            onClick={() => setFocusedInput('unit1')}
+                            className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 md:w-40 md:h-28 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl md:text-6xl font-bold shadow-inner ${focusedInput === 'unit1' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputUnit1 || '?'}
+                          </div>
+                          <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitSmall}</span>
+                        </div>
+                     ) : problem.answerType === 'unit_composite_from_small' ? (
+                        <div className="flex items-center gap-2 sm:gap-4">
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('unit1')}
+                              className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'unit1' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputUnit1 || '?'}
+                            </div>
+                            <span className="text-xl sm:text-3xl font-bold text-gray-800">{problem.unitLarge}</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('unit2')}
+                              className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'unit2' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit2 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputUnit2 || '?'}
+                            </div>
+                            <span className="text-xl sm:text-3xl font-bold text-gray-800">{problem.unitSmall}</span>
+                          </div>
+                        </div>
+                     ) : problem.answerType === 'approx_range' ? (
+                        <div className="flex items-center gap-2 sm:gap-4">
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('approx1')}
+                              className={`cursor-pointer w-24 h-16 sm:w-36 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'approx1' ? 'ring-4 ring-orange-400' : ''} ${userInputApprox1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputApprox1 || '?'}
+                            </div>
+                            <span className="text-xl sm:text-3xl font-bold text-gray-800">以上</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <div 
+                              onClick={() => setFocusedInput('approx2')}
+                              className={`cursor-pointer w-24 h-16 sm:w-36 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'approx2' ? 'ring-4 ring-orange-400' : ''} ${userInputApprox2 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                            >
+                              {userInputApprox2 || '?'}
+                            </div>
+                            <span className="text-xl sm:text-3xl font-bold text-gray-800">未満</span>
+                          </div>
+                        </div>
+                     ) : null}
+                    
+                    {problem.rem !== undefined && !isLength && !isUnit && !isWordProblem && !isApprox && (
+                        <React.Fragment>
+                          <div className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 mb-2 sm:mb-4 whitespace-nowrap">あまり</div>
+                          <div 
+                            onClick={() => setFocusedInput('rem')}
+                            className={`cursor-pointer w-16 h-16 sm:w-28 sm:h-24 md:w-32 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'rem' ? 'ring-4 ring-orange-400' : ''} ${userInputRem ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
+                          >
+                            {userInputRem || '?'}
+                          </div>
+                        </React.Fragment>
+                      )}
+                  </div>
+
+                  {/* 正解の表示（2回以上間違えた場合） */}
+                  {currentProblemMistakes >= 2 && status !== 'correct' && (
+                    <div className="mt-6 p-4 bg-red-50 border-4 border-red-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
+                      <span className="text-sm md:text-base font-bold text-red-800 mb-2 block">せいかいは コレだよ！ かきうつしてね！</span>
+                      <div className="text-3xl md:text-4xl font-extrabold text-red-600 tracking-widest flex justify-center items-center">
+                        {renderCorrectAnswer(problem)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 式の表示（文章問題のみ） */}
+                  {isWordProblem && (status === 'correct' || status === 'wrong') && problem.equation && (
+                    <div className="mt-6 p-4 bg-yellow-50 border-4 border-yellow-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
+                      <span className="text-sm md:text-base font-bold text-yellow-800 mb-1 block">こたえを だすための 式</span>
+                      <span className="text-3xl md:text-4xl font-extrabold text-gray-800 tracking-widest">{problem.equation}</span>
+                    </div>
+                  )}
+
+                  {/* AIヒントエリア */}
+                  <div className="mt-4 sm:mt-6 w-full flex flex-col items-center min-h-[60px]">
+                    {!hint && !isHintLoading && (
+                      <button 
+                        onClick={handleGetHint} 
+                        disabled={countdown !== null}
+                        className="text-xs sm:text-sm md:text-base font-bold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 py-2 px-3 sm:py-3 sm:px-6 rounded-full transition-colors flex items-center gap-1 sm:gap-2 shadow-sm border border-indigo-200 disabled:opacity-50"
                       >
-                        {userInputRem || '?'}
+                        <span className="hidden sm:inline">✨</span> AIヒント
+                      </button>
+                    )}
+                    {isHintLoading && (
+                      <div className="text-xs sm:text-sm md:text-base font-bold text-indigo-600 animate-pulse flex items-center gap-1 sm:gap-2">
+                        <Star className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-yellow-500 inline-block" /> かんがえ中...
                       </div>
-                    </React.Fragment>
-                  )}
-                </div>
-
-                {/* AIヒントエリア */}
-                <div className="mt-4 sm:mt-6 w-full flex flex-col items-center min-h-[60px]">
-                  {!hint && !isHintLoading && (
-                    <button 
-                      onClick={handleGetHint} 
-                      disabled={countdown !== null}
-                      className="text-xs sm:text-sm md:text-base font-bold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 py-2 px-3 sm:py-3 sm:px-6 rounded-full transition-colors flex items-center gap-1 sm:gap-2 shadow-sm border border-indigo-200 disabled:opacity-50"
-                    >
-                      <span className="hidden sm:inline">✨</span> AIヒント
-                    </button>
-                  )}
-                  {isHintLoading && (
-                    <div className="text-xs sm:text-sm md:text-base font-bold text-indigo-600 animate-pulse flex items-center gap-1 sm:gap-2">
-                      <Star className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-yellow-500 inline-block" /> かんがえ中...
-                    </div>
-                  )}
-                  {hint && (
-                    <div className="bg-indigo-50 border-2 border-indigo-200 text-indigo-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm md:text-base font-medium relative animate-in fade-in slide-in-from-bottom-2 w-full text-left shadow-sm max-h-[120px] overflow-y-auto">
-                      <div className="font-extrabold text-indigo-700 mb-1 flex items-center gap-1">
-                        ✨ AIせんせい
+                    )}
+                    {hint && (
+                      <div className="bg-indigo-50 border-2 border-indigo-200 text-indigo-900 p-2 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm md:text-base font-medium relative animate-in fade-in slide-in-from-bottom-2 w-full text-left shadow-sm max-h-[120px] overflow-y-auto">
+                        <div className="font-extrabold text-indigo-700 mb-1 flex items-center gap-1">
+                          ✨ AIせんせい
+                        </div>
+                        {hint}
                       </div>
-                      {hint}
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                {/* テンキー（全てのコースで左側に表示） */}
-                <div className="mt-4 sm:mt-6 w-full flex justify-center pb-4">
-                  {renderNumpad()}
-                </div>
-              </div>
-
-              {/* 右側: 筆算表示と手書きの書き込みエリア (50%) */}
-              <div className="w-1/2 flex flex-col bg-amber-50 order-2 relative overflow-hidden min-h-[1600px] md:min-h-[2000px]">
-                <div className="flex justify-between items-center p-2 sm:p-4 bg-amber-100 border-b border-amber-200 z-20">
-                  <span className="text-xs sm:text-sm md:text-base font-bold text-amber-700/80 pl-1 sm:pl-2">かきこみ</span>
-                  <div className="flex gap-1 sm:gap-2">
-                    <button 
-                      onClick={() => canvasRef.current?.undo()}
-                      className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200"
-                      title="１つもどす"
-                    >
-                      <Undo className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">もどす</span>
-                    </button>
-                    <button 
-                      onClick={() => canvasRef.current?.clear()}
-                      className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200"
-                      title="かきこみをすべてけす"
-                    >
-                      <X className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">けす</span>
-                    </button>
+                  {/* テンキー */}
+                  <div className="mt-4 sm:mt-6 w-full flex justify-center pb-4">
+                    {renderNumpad()}
                   </div>
                 </div>
-                
-                <div className="relative w-full flex-1 flex flex-col items-center justify-start overflow-hidden">
-                  <GridBackground />
-                  <VerticalMath problem={problem} />
-                  <DrawCanvas ref={canvasRef} clearKey={clearKey} />
-                </div>
-              </div>
 
+                {/* 右側: 筆算表示と手書きの書き込みエリア (数直線・長さ・単位・文章問題・がい数以外のみ表示) */}
+                {!isNumberLine && !isLength && !isUnit && !isWordProblem && !isApprox && (
+                  <div className="w-1/2 flex flex-col bg-amber-50 order-2 relative overflow-hidden h-full min-h-[1600px] md:min-h-[2000px]">
+                    <div className="flex justify-between items-center p-2 sm:p-4 bg-amber-100 border-b border-amber-200 z-20">
+                      <span className="text-xs sm:text-sm md:text-base font-bold text-amber-700/80 pl-1 sm:pl-2">かきこみ</span>
+                      <div className="flex gap-1 sm:gap-2">
+                        <button 
+                          onClick={() => canvasRef.current?.undo()}
+                          className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200"
+                          title="１つもどす"
+                        >
+                          <Undo className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">もどす</span>
+                        </button>
+                        <button 
+                          onClick={() => canvasRef.current?.clear()}
+                          className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200"
+                          title="かきこみをすべてけす"
+                        >
+                          <X className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">けす</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="relative w-full flex-1 flex flex-col items-center justify-start overflow-hidden">
+                      <GridBackground />
+                      <VerticalMath problem={problem} />
+                      <DrawCanvas ref={canvasRef} clearKey={clearKey} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1696,6 +2523,11 @@
         sub: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', btn: 'bg-blue-500 hover:bg-blue-600 shadow-[0_6px_0_#1e40af]', title: 'ひき算' },
         mul: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200', btn: 'bg-green-500 hover:bg-green-600 shadow-[0_6px_0_#166534]', title: 'かけ算' },
         div: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', btn: 'bg-purple-500 hover:bg-purple-600 shadow-[0_6px_0_#5b21b6]', title: 'わり算' },
+        approx: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200', btn: 'bg-orange-500 hover:bg-orange-600 shadow-[0_6px_0_#c2410c]', title: 'がい数' },
+        number_line: { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-200', btn: 'bg-pink-500 hover:bg-pink-600 shadow-[0_6px_0_#be185d]', title: '数直線' },
+        length: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', btn: 'bg-teal-500 hover:bg-teal-600 shadow-[0_6px_0_#0f766e]', title: '長さ' },
+        unit: { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-200', btn: 'bg-cyan-500 hover:bg-cyan-600 shadow-[0_6px_0_#0891b2]', title: '単位' },
+        word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', btn: 'bg-indigo-500 hover:bg-indigo-600 shadow-[0_6px_0_#4338ca]', title: '文章問題' }
       }[type];
 
       useEffect(() => {
@@ -1803,6 +2635,184 @@
     };
 
     // ---------------------------------------------------------
+    // プリント印刷画面
+    // ---------------------------------------------------------
+    const PrintView = ({ setView }) => {
+      const [grade, setGrade] = useState(1);
+      const [unit, setUnit] = useState('add');
+      const [problems, setProblems] = useState([]);
+
+      const generatePrint = () => {
+        const newProbs = [];
+        for(let i = 0; i < 10; i++) {
+          newProbs.push(generateProblem(unit, grade));
+        }
+        setProblems(newProbs);
+      };
+
+      useEffect(() => {
+        generatePrint();
+      }, [grade, unit]);
+
+      const unitLabels = { 
+        add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数',
+        number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題' 
+      };
+
+      return (
+        <div className="min-h-screen bg-white">
+          {/* コントロールエリア（印刷時は非表示） */}
+          <div className="print:hidden p-4 md:p-8 bg-stone-100 border-b-4 border-stone-200 sticky top-0 z-50">
+            <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+              <button 
+                onClick={() => setView('home')} 
+                className="font-bold text-gray-600 flex items-center gap-2 hover:bg-gray-200 px-4 py-2 rounded-xl transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 inline-block"/> もどる
+              </button>
+              
+              <div className="flex flex-wrap gap-3 items-center justify-center">
+                <select value={grade} onChange={(e) => setGrade(Number(e.target.value))} className="p-2 md:p-3 rounded-xl font-bold border-2 border-stone-300 outline-none focus:border-stone-500">
+                  <option value={1}>小学1年生</option>
+                  <option value={2}>小学2年生</option>
+                  <option value={3}>小学3年生</option>
+                  <option value={4}>小学4年生</option>
+                  <option value={5}>小学5年生</option>
+                </select>
+                <select value={unit} onChange={(e) => setUnit(e.target.value)} className="p-2 md:p-3 rounded-xl font-bold border-2 border-stone-300 outline-none focus:border-stone-500">
+                  {Object.entries(unitLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <button 
+                  onClick={generatePrint} 
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 md:py-3 rounded-xl font-bold shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[4px] transition-all"
+                >
+                  問題をかえる
+                </button>
+                <button 
+                  onClick={() => window.print()} 
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 md:py-3 rounded-xl font-bold shadow-[0_4px_0_#15803d] active:shadow-[0_0px_0_#15803d] active:translate-y-[4px] transition-all flex items-center gap-2"
+                >
+                  🖨️ 印刷する
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 印刷エリア */}
+          <div id="print-area" className="p-8 max-w-[210mm] mx-auto text-black bg-white">
+            
+            {/* 行の一番上に学年と単元名 */}
+            <div className="flex justify-between items-start mb-6">
+              <h1 className="text-2xl font-bold border-b-2 border-black pb-1 w-full text-left">
+                小学{grade}年生 さんすう - {unitLabels[unit]}
+              </h1>
+            </div>
+            
+            {/* 名前欄（左右に1文字分・1行分の十分な余白） */}
+            <div className="flex justify-end mb-12 mx-8">
+              <div className="flex items-end text-xl">
+                <span className="mr-4 tracking-widest font-bold">なまえ</span>
+                <div className="w-72 border-b-2 border-black h-8 relative"></div>
+              </div>
+            </div>
+
+            {/* 問題一覧 */}
+            <div className="grid grid-cols-1 gap-y-12 text-xl font-bold">
+              {problems.map((p, i) => (
+                <div key={i} className="flex gap-4 items-start">
+                  <span className="w-8 shrink-0">({i+1})</span>
+                  
+                  {(p.op === '文章問題' || p.op === 'がい数') ? (
+                    <div className="flex flex-col gap-6 w-full">
+                      <span className="whitespace-pre-wrap leading-relaxed">{p.text}</span>
+                      {p.op === '文章問題' && (
+                        <div className="flex items-center gap-4 mt-2">
+                          <span>式:</span>
+                          <div className="flex-1 border-b border-gray-400"></div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-4 justify-end mt-2 pr-12">
+                        <span>答え:</span>
+                        {p.answerType === 'approx_range' ? (
+                           <div className="flex items-center gap-2">
+                             <div className="w-24 border-b border-gray-400"></div>
+                             <span>以上、</span>
+                             <div className="w-24 border-b border-gray-400"></div>
+                             <span>未満</span>
+                           </div>
+                        ) : (
+                           <div className="w-40 border-b border-gray-400"></div>
+                        )}
+                      </div>
+                    </div>
+                  ) : p.op === '長さ' ? (
+                    <div className="flex flex-col gap-6 w-full">
+                       <RulerSVG totalMm={p.ansTotalMm} maxCm={p.maxCm} />
+                       <div className="flex items-center gap-4 justify-end mt-2 pr-12">
+                         <span>答え:</span>
+                         <div className="w-40 border-b border-gray-400"></div>
+                       </div>
+                    </div>
+                  ) : p.op === '単位' ? (
+                    <div className="flex items-center gap-4 w-full">
+                      <span className="tracking-widest">
+                        {p.answerType === 'unit_m' || p.answerType === 'unit_large' ? `${p.q_total_cm || p.q_total_small}${p.unitSmall || 'cm'} =` : 
+                         p.answerType === 'unit_cm' || p.answerType === 'unit_small' ? `${p.q_m || p.q_large}${p.unitLarge || 'm'} =` : 
+                         p.answerType === 'unit_cm_from_m_cm' || p.answerType === 'unit_small_from_composite' ? `${p.q_m || p.q_large}${p.unitLarge || 'm'} ${p.q_cm || p.q_small}${p.unitSmall || 'cm'} =` : 
+                         `${p.q_total_cm || p.q_total_small}${p.unitSmall || 'cm'} =`}
+                      </span>
+                      <div className="flex-1 border-b border-gray-400"></div>
+                    </div>
+                  ) : p.op === '数直線' ? (
+                    <div className="flex flex-col gap-6 w-full">
+                      <svg width="100%" height="160" viewBox="0 0 1000 160" className="overflow-visible mt-4">
+                        <line x1="40" y1="80" x2="960" y2="80" stroke="#000" strokeWidth="4" strokeLinecap="round" />
+                        <polygon points="960,70 980,80 960,90" fill="#000" />
+                        {p.labels && p.labels.map((label, j) => {
+                          const x = 80 + (840 / (p.count - 1)) * j;
+                          return (
+                            <g key={j}>
+                              <line x1={x} y1="60" x2={x} y2="100" stroke="#000" strokeWidth="3" strokeLinecap="round" />
+                              {typeof label === 'object' ? (
+                                  label.int > 0 ? (
+                                    <g>
+                                      <text x={x-20} y="150" textAnchor="middle" fontSize="32" fontWeight="bold" fill="#000">{label.int}</text>
+                                      <text x={x+15} y="135" textAnchor="middle" fontSize="24" fontWeight="bold" fill="#000">{label.num}</text>
+                                      <line x1={x} y1="142" x2={x+30} y2="142" stroke="#000" strokeWidth="2" />
+                                      <text x={x+15} y="170" textAnchor="middle" fontSize="24" fontWeight="bold" fill="#000">{label.den}</text>
+                                    </g>
+                                  ) : (
+                                    <g>
+                                      <text x={x} y="135" textAnchor="middle" fontSize="24" fontWeight="bold" fill="#000">{label.num}</text>
+                                      <line x1={x-15} y1="142" x2={x+15} y2="142" stroke="#000" strokeWidth="2" />
+                                      <text x={x} y="170" textAnchor="middle" fontSize="24" fontWeight="bold" fill="#000">{label.den}</text>
+                                    </g>
+                                  )
+                              ) : (
+                                  <text x={x} y="140" textAnchor="middle" fontSize={label === '?' ? "48" : "32"} fontWeight="bold" fill="#000">
+                                    {label === '?' ? '(   )' : label}
+                                  </text>
+                              )}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4 w-full">
+                      <span className="tracking-widest text-2xl">{p.n1} {p.op} {p.n2} = </span>
+                      <div className="w-40 border-b border-gray-400"></div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ---------------------------------------------------------
     // メインアプリケーション
     // ---------------------------------------------------------
     function App() {
@@ -1820,6 +2830,7 @@
           {view === 'quiz' && <QuizView type={type} level={level} course={course} setView={setView} setResult={setResult} />}
           {view === 'result' && <ResultView result={result} type={type} level={level} setView={setView} />}
           {view === 'records' && <RecordsView setView={setView} />}
+          {view === 'print' && <PrintView setView={setView} />}
         </div>
       );
     }
