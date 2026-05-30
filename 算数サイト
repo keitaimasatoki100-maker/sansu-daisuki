@@ -107,7 +107,7 @@
       const hourAngle = (h % 12) * 30 + m * 0.5;
       const minuteAngle = m * 6;
       return (
-        <svg width={size} height={size} viewBox="0 0 100 100" className="mx-auto my-2 overflow-visible bg-white rounded-full p-1 border shadow-sm">
+        <svg width={size} height={size} viewBox="0 0 100 100" className="mx-auto my-2 overflow-visible bg-white rounded-full p-1 border stroke-gray-700 shadow-sm">
           <circle cx="50" cy="50" r="48" fill="white" stroke="#374151" strokeWidth="3" />
           {Array.from({length: 12}).map((_, i) => {
             const angle = (i + 1) * 30 * (Math.PI / 180);
@@ -128,8 +128,134 @@
       );
     };
 
+    // 時間の数直線 (SVGタイムライン)
+    const TimeLineSVG = ({ h1, m1, ansH, ansM, dm, dh, isAfter, isDuration, h2, m2, size = 100 }) => {
+      let startHour = h1;
+      if (!isAfter && !isDuration) {
+        startHour = h1 - 2;
+        if (startHour <= 0) startHour += 12;
+      }
+      const width = 600;
+      const height = size;
+      const padX = 60;
+      const usableWidth = width - padX * 2;
+      const pixelsPerHour = usableWidth / 3;
+
+      const getX = (h, m) => {
+        let diff = h - startHour;
+        if (diff < -6) diff += 12;
+        if (diff > 6) diff -= 12;
+        const total = diff + m / 60;
+        return padX + total * pixelsPerHour;
+      };
+
+      const ticks = [];
+      for (let i = 0; i <= 3; i++) {
+        const hr = (startHour + i) % 12 === 0 ? 12 : (startHour + i) % 12;
+        ticks.push({ x: padX + i * pixelsPerHour, label: `${hr}時`, isMajor: true });
+        if (i < 3) {
+          for (let j = 1; j <= 5; j++) {
+            ticks.push({ x: padX + i * pixelsPerHour + (pixelsPerHour / 6) * j, isMajor: false });
+          }
+        }
+      }
+
+      const x1 = getX(h1, m1);
+      const x2 = isDuration ? getX(h2, m2) : getX(ansH, ansM);
+
+      return (
+        <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="mx-auto my-2 overflow-visible bg-white rounded-xl p-2 border shadow-sm max-w-lg">
+          {/* メインの数直線軸 */}
+          <line x1={padX - 25} y1="60" x2={width - padX + 25} y2="60" stroke="#4b5563" strokeWidth="3" strokeLinecap="round" />
+          
+          {/* 目盛り刻み */}
+          {ticks.map((t, idx) => (
+            <g key={idx}>
+              <line x1={t.x} y1={t.isMajor ? "48" : "54"} x2={t.x} y2="66" stroke="#4b5563" strokeWidth={t.isMajor ? "2.5" : "1"} />
+              {t.isMajor && (
+                <text x={t.x} y="85" textAnchor="middle" fontSize="13" fontWeight="bold" fill="#374151">{t.label}</text>
+              )}
+            </g>
+          ))}
+
+          {/* 時間計算のガイド表示 */}
+          {isDuration ? (
+            <g>
+              <circle cx={x1} cy="60" r="5" fill="#3b82f6" />
+              <text x={x1} y="32" textAnchor="middle" fontSize="12" fill="#3b82f6" fontWeight="bold">{h1}:{m1.toString().padStart(2, '0')}</text>
+              
+              <circle cx={x2} cy="60" r="5" fill="#10b981" />
+              <text x={x2} y="32" textAnchor="middle" fontSize="12" fill="#10b981" fontWeight="bold">{h2}:{m2.toString().padStart(2, '0')}</text>
+              
+              <path d={`M ${x1},50 Q ${(x1 + x2)/2},20 ${x2},50`} fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray="4" />
+              <text x={(x1 + x2)/2} y="15" textAnchor="middle" fontSize="14" fill="#f59e0b" fontWeight="bold">？ 時間 ？ 分</text>
+            </g>
+          ) : (
+            <g>
+              <circle cx={x1} cy="60" r="5" fill="#3b82f6" />
+              <text x={x1} y="32" textAnchor="middle" fontSize="12" fill="#3b82f6" fontWeight="bold">{h1}時{m1}分</text>
+              
+              <path d={isAfter ? `M ${x1},50 Q ${(x1 + x2)/2},32 ${x2 - 5},46` : `M ${x1},50 Q ${(x1 + x2)/2},32 ${x2 + 5},46`} fill="none" stroke="#ef4444" strokeWidth="3" />
+              {isAfter ? (
+                <polygon points={`${x2},48 ${x2-8},38 ${x2-4},50`} fill="#ef4444" />
+              ) : (
+                <polygon points={`${x2},48 ${x2+8},38 ${x2+4},50`} fill="#ef4444" />
+              )}
+              <text x={(x1 + x2)/2} y="24" textAnchor="middle" fontSize="12" fill="#ef4444" fontWeight="bold">
+                {dh > 0 ? `${dh}時間` : ''}{dm}分{isAfter ? '後' : '前'}
+              </text>
+              
+              <circle cx={x2} cy="60" r="5" fill="#ef4444" />
+              <text x={x2} y="32" textAnchor="middle" fontSize="15" fill="#ef4444" fontWeight="bold">？</text>
+            </g>
+          )}
+        </svg>
+      );
+    };
+
+    // ものさしのSVG描画
+    const RulerSVG = ({ totalMm, maxCm = 10, size = "100%" }) => {
+      const scale = 40;
+      const width = maxCm * scale + 40;
+      const height = 80;
+      
+      const ticks = [];
+      for (let i = 0; i <= maxCm * 10; i++) {
+        const x = 20 + i * (scale / 10);
+        let h = 10;
+        if (i % 10 === 0) h = 25;
+        else if (i % 5 === 0) h = 18;
+        ticks.push({ x, h, isNum: i % 10 === 0, num: i / 10 });
+      }
+
+      const targetWidth = totalMm * (scale / 10);
+
+      return (
+        <div className="flex flex-col items-center my-4 w-full">
+          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+            {/* 定規の本体 */}
+            <rect x="10" y="30" width={maxCm * scale + 20} height="40" fill="#fef08a" stroke="#d97706" strokeWidth="2" rx="4" />
+            {/* 目盛り */}
+            {ticks.map((t, idx) => (
+              <g key={idx}>
+                <line x1={t.x} y1="30" x2={t.x} y2={30 + t.h} stroke="#d97706" strokeWidth={t.h > 15 ? "1.5" : "1"} />
+                {t.isNum && (
+                  <text x={t.x} y="67" textAnchor="middle" fontSize="12" fontWeight="bold" fill="#b45309">{t.num}</text>
+                )}
+              </g>
+            ))}
+            {/* 測る対象 */}
+            <rect x="20" y="10" width={targetWidth} height="12" fill="#3b82f6" rx="2" />
+            {/* ガイド線 */}
+            <line x1={20 + targetWidth} y1="5" x2={20 + targetWidth} y2="28" stroke="#2563eb" strokeWidth="1.5" strokeDasharray="2" />
+          </svg>
+          <span className="text-sm font-bold text-blue-600 mt-1">あおい ぼうの 長さは 何cm 何mm ですか？</span>
+        </div>
+      );
+    };
+
     // 記録保存
-    const saveRecord = (type, level, mode, value, resultValue) => {
+    const saveRecordLocal = (type, level, mode, value, resultValue) => {
       const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
       if (!records[type]) records[type] = {};
       if (!records[type][level]) records[type][level] = {};
@@ -145,7 +271,7 @@
       return isNewRecord; 
     };
 
-    const checkAndApplyAllClearBonus = (type, level) => {
+    const checkAndApplyAllClearBonusLocal = (type, level) => {
       const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
       if (!records[type] || !records[type][level]) return 0;
       const currentLevelRecords = records[type][level];
@@ -157,7 +283,7 @@
       return 0;
     };
 
-    const addPoints = (type, level, mode, value, pointsToAdd) => {
+    const addPointsLocal = (type, level, mode, value, pointsToAdd) => {
       const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
       if (!records[type]) records[type] = {};
       if (!records[type][level]) records[type][level] = {};
@@ -166,7 +292,7 @@
       localStorage.setItem('sansu_records', JSON.stringify(records));
     };
 
-    const saveMistake = (type, problem) => {
+    const saveMistakeLocal = (type, problem) => {
       const mistakes = JSON.parse(localStorage.getItem('sansu_mistakes') || '{}');
       if (!mistakes[type]) mistakes[type] = {};
       let key;
@@ -185,7 +311,7 @@
       localStorage.setItem('sansu_mistakes', JSON.stringify(mistakes));
     };
 
-    const generateSingleProblem = (type, level) => {
+    const generateSingleProblemLocal = (type, level) => {
       let n1, n2, ans;
       switch (type) {
         case 'add':
@@ -265,21 +391,22 @@
             h1 = Math.floor(Math.random()*12)+1; let isAfter = Math.random()<0.5;
             if(isAfter){ m1=Math.floor(Math.random()*4)*10+10; dm=Math.floor(Math.random()*((50-m1)/10))*10+10; text=`${h1}時 ${m1}分の ${dm}分後は、\n何時 何分 ですか？`; m2=m1+dm; }
             else{ m1=Math.floor(Math.random()*4)*10+20; dm=Math.floor(Math.random()*(m1/10))*10+10; if(m1-dm<0)dm=m1; text=`${h1}時 ${m1}分の ${dm}分前は、\n何時 何分 ですか？`; m2=m1-dm; }
-            return { op:'時刻と時間', text, ans1:h1, ans2:m2, answerType:'clock' };
+            return { op:'時刻と時間', text, h1, m1, ans1:h1, ans2:m2, dm, dh:0, isAfter, answerType:'clock' };
           } else if (level===3) {
             h1 = Math.floor(Math.random()*12)+1; let isAfter = Math.random()<0.5;
             if(isAfter){ m1=Math.floor(Math.random()*3)*10+30; dm=Math.floor(Math.random()*3)*10+20; text=`${h1}時 ${m1}分の ${dm}分後は、\n何時 何分 ですか？`; let totalM=m1+dm; h2=h1+Math.floor(totalM/60); m2=totalM%60; if(h2>12)h2-=12; }
             else{ m1=Math.floor(Math.random()*3)*10; dm=Math.floor(Math.random()*3)*10+20; text=`${h1}時 ${m1}分の ${dm}分前は、\n何時 何分 ですか？`; let totalM=m1-dm; h2=h1-1; m2=60+totalM; if(h2<=0)h2+=12; }
-            return { op:'時刻と時間', text, ans1:h2, ans2:m2, answerType:'clock' };
+            return { op:'時刻と時間', text, h1, m1, ans1:h2, ans2:m2, dm, dh:0, isAfter, answerType:'clock' };
           } else if (level===4) {
              h1=Math.floor(Math.random()*12)+1; m1=Math.floor(Math.random()*6)*10; dh=Math.floor(Math.random()*3)+1; dm=Math.floor(Math.random()*5)*10+10;
-             if(Math.random()<0.5){ text=`${h1}時 ${m1}分の\n${dh}時間 ${dm}分後は 何時何分 ですか？`; let totalM=m1+dm; h2=h1+dh+Math.floor(totalM/60); m2=totalM%60; while(h2>12)h2-=12; }
+             let isAfter = Math.random()<0.5;
+             if(isAfter){ text=`${h1}時 ${m1}分の\n${dh}時間 ${dm}分後は 何時何分 ですか？`; let totalM=m1+dm; h2=h1+dh+Math.floor(totalM/60); m2=totalM%60; while(h2>12)h2-=12; }
              else{ text=`${h1}時 ${m1}分の\n${dh}時間 ${dm}分前は 何時何分 ですか？`; let totalM=m1-dm; h2=h1-dh; if(totalM<0){h2-=1;m2=60+totalM;}else{m2=totalM;} while(h2<=0)h2+=12; }
-             return { op:'時刻と時間', text, ans1:h2, ans2:m2, answerType:'clock' };
+             return { op:'時刻と時間', text, h1, m1, ans1:h2, ans2:m2, dm, dh, isAfter, answerType:'clock' };
           } else {
              h1=Math.floor(Math.random()*8)+1; m1=Math.floor(Math.random()*6)*10; dh=Math.floor(Math.random()*3); dm=Math.floor(Math.random()*5)*10+10; if(dh===0&&dm===0)dm=30;
              let totalM2 = h1*60+m1 + dh*60+dm; h2 = Math.floor(totalM2/60); m2 = totalM2%60; if(h2>12)h2-=12;
-             return { op:'時刻と時間', text:`${h1}時 ${m1}分 から ${h2}時 ${m2}分 までは、\n何時間 何分 ですか？`, ans1:dh, ans2:dm, answerType:'duration' };
+             return { op:'時刻と時間', text:`${h1}時 ${m1}分 から ${h2}時 ${m2}分 までは、\n何時間 何分 ですか？`, h1, m1, h2, m2, ans1:dh, ans2:dm, answerType:'duration' };
           }
         }
         case 'word_problem': {
@@ -329,7 +456,7 @@
 
     const generateProblem = (type, level, prevProblem = null) => {
       let newProblem;
-      do { newProblem = generateSingleProblem(type, level); } while (prevProblem && newProblem.text === prevProblem.text && newProblem.ans === prevProblem.ans);
+      do { newProblem = generateSingleProblemLocal(type, level); } while (prevProblem && newProblem.text === prevProblem.text && newProblem.ans === prevProblem.ans);
       return newProblem;
     };
 
@@ -481,7 +608,7 @@
         localStorage.setItem('sansu_last_visit_date', todayStr);
         localStorage.setItem('sansu_access_streak', currentStreak.toString());
 
-        // 日替わりコメントプール (日付依存)
+        // 日替わり応援コメントプール (日付依存)
         const dailyPool = [
           "今日も たのしく さんすうを しよう！",
           "めざせ！けいさん全問大せいかい！",
@@ -593,7 +720,7 @@
             </div>
             <div className="flex flex-col gap-4">
               {[1, 2, 3, 4, 5].map(lv => {
-                const unlocked = lv <= 2 || ['count_10','count_20','count_30','time_60','time_120','time_180'].every(k => (typeRecords[lv-1]||{})[k] !== undefined);
+                const unlocked = type === 'clock' || lv <= 2 || ['count_10','count_20','count_30','time_60','time_120','time_180'].every(k => (typeRecords[lv-1]||{})[k] !== undefined);
                 return (
                   <button key={lv} onClick={() => { setLevel(lv); setView('course'); }} disabled={!unlocked} className={`relative flex flex-col items-center justify-center gap-1 ${theme.btn} text-white py-4 rounded-2xl ${unlocked ? '' : 'opacity-50 pointer-events-none'}`}>
                     <span className="text-xl font-bold">レベル {lv}</span>
@@ -650,6 +777,7 @@
       const [now, setNow] = useState(null); const [mistakes, setMistakes] = useState(0);
       const isFinishedRef = useRef(false); const canvasRef = useRef(null); const [clearKey, setClearKey] = useState(Date.now());
       const lastActionTimeRef = useRef(Date.now());
+      const [showHint, setShowHint] = useState(false); // ヒント表示用のステート
 
       const theme = getTheme(type);
       const isNumberLine = problem.op === '数直線'; const isLength = problem.op === '長さ'; const isUnit = problem.op === '単位'; const isWordProblem = problem.op === '文章問題'; const isApprox = problem.op === 'がい数'; const isClock = problem.op === '時刻と時間';
@@ -673,13 +801,13 @@
         
         if (isCorrectAns && isCorrectRem) {
           playCorrectSound(); setStatus('correct'); setScore(score + 1);
-          if (!isFinishedRef.current) addPoints(type, level, course.mode, course.value, 1 * level); 
+          if (!isFinishedRef.current) addPointsLocal(type, level, course.mode, course.value, 1 * level); 
           if (course.mode === 'count' && score + 1 >= course.value) {
             isFinishedRef.current = true; const finalTime = Math.floor((Date.now() - startTime) / 1000);
             setTimeout(() => {
               const isNew = saveRecord(type, level, 'count', course.value, finalTime);
               let bp = isNew ? 10 * level : 0; const acb = checkAndApplyAllClearBonus(type, level); bp += acb;
-              if (bp > 0) addPoints(type, level, 'count', course.value, bp);
+              if (bp > 0) addPointsLocal(type, level, 'count', course.value, bp);
               setResult({ score: score + 1, timeElapsed: finalTime, mode: 'count', value: course.value, isNewRecord: isNew, earnedPoints: ((score + 1) * level) + bp });
               setView('result');
             }, isWordProblem?3000:750);
@@ -689,10 +817,11 @@
               setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
               setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
               setStatus('idle'); setClearKey(Date.now()); setCurrentProblemMistakes(0);
+              setShowHint(false); // 新問移行時にヒントを隠す
             }, isWordProblem?3000:750);
           }
         } else {
-          saveMistake(type, problem); setStatus('wrong');
+          saveMistakeLocal(type, problem); setStatus('wrong');
           setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
           setFocusedInput(problem.answerType==='fraction_proper'||problem.answerType==='fraction_improper'?'num':problem.answerType==='fraction_mixed'?'int':problem.answerType==='length_cm'||problem.answerType==='length_cm_mm'?'cm':problem.answerType==='length_mm'?'mm':problem.answerType==='unit_composite_from_small'||problem.answerType==='unit_large'||problem.answerType==='unit_small'||problem.answerType==='unit_small_from_composite'||problem.answerType==='clock'||problem.answerType==='clock_read'||problem.answerType==='duration'?'unit1':problem.answerType==='approx_range'?'approx1':'ans');
           setMistakes(mistakes + 1); setCurrentProblemMistakes(prev => prev + 1);
@@ -708,6 +837,7 @@
         setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
         setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
         setStatus('idle'); setScore(0); setCountdown(3); setStartTime(null); setNow(null); setMistakes(0); setCurrentProblemMistakes(0); setClearKey(Date.now()); isFinishedRef.current = false;
+        setShowHint(false); // 初期リセット
         const timer = setInterval(() => { setCountdown(prev => { if (prev <= 1) { clearInterval(timer); setStartTime(Date.now()); setNow(Date.now()); return null; } return prev - 1; }); }, 1000);
         return () => clearInterval(timer);
       }, [type, level, course]);
@@ -924,8 +1054,43 @@
 
                 {isClock && (
                   <div className="w-full flex flex-col items-center p-2">
-                     <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">{problem.text}</span>
-                     {problem.answerType === 'clock_read' && <ClockSVG h={problem.h1} m={problem.m1} size={150} />}
+                     <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{problem.text}</span>
+                     
+                     {/* ヒントボタン */}
+                     <div className="mb-4">
+                       <button 
+                         onClick={() => setShowHint(prev => !prev)} 
+                         className={`px-6 py-2.5 rounded-2xl font-bold shadow-sm border transition-all flex items-center gap-2 ${
+                           showHint 
+                             ? 'bg-amber-400 text-white border-amber-500 hover:bg-amber-500' 
+                             : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
+                         }`}
+                       >
+                         <span>💡</span> <span>{showHint ? 'ヒントを かくす' : 'ヒントを みる'}</span>
+                       </button>
+                     </div>
+
+                     {/* ヒントがオンの時のみ、時計または数直線を描画 */}
+                     {showHint && (
+                       <div className="w-full flex justify-center animate-in fade-in zoom-in duration-200">
+                         {problem.answerType === 'clock_read' ? (
+                           <ClockSVG h={problem.h1} m={problem.m1} size={150} />
+                         ) : (
+                           <TimeLineSVG 
+                             h1={problem.h1} 
+                             m1={problem.m1} 
+                             ansH={problem.ans1} 
+                             ansM={problem.ans2} 
+                             dm={problem.dm} 
+                             dh={problem.dh} 
+                             isAfter={problem.isAfter} 
+                             isDuration={problem.answerType === 'duration'} 
+                             h2={problem.h2} 
+                             m2={problem.m2} 
+                           />
+                         )}
+                       </div>
+                     )}
                   </div>
                 )}
 
@@ -1175,24 +1340,28 @@
 
           <div className="print:hidden p-4 md:p-8 bg-stone-100 border-b-4 border-stone-200 sticky top-0 z-50">
             <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-              <button onClick={() => setView('home')} className="font-bold text-gray-600 flex items-center gap-2 hover:bg-gray-200 px-4 py-2 rounded-xl"><ArrowLeft className="w-5 h-5"/> もどる</button>
+              <button onClick={() => setView('home')} className="font-bold text-gray-600 flex items-center gap-2 hover:bg-gray-200 px-4 py-2 rounded-xl transition-colors"><ArrowLeft className="w-5 h-5"/> もどる</button>
               <div className="flex flex-wrap gap-3 items-center justify-center">
-                <select value={unit} onChange={(e) => setUnit(e.target.value)} className="p-2 rounded-xl font-bold border-2 border-stone-300 outline-none">
+                <select value={unit} onChange={(e) => setUnit(e.target.value)} className="p-2 md:p-3 rounded-xl font-bold border-2 border-stone-300 outline-none focus:border-stone-500">
                   {Object.entries(unitLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
-                <select value={grade} onChange={(e) => setGrade(Number(e.target.value))} className="p-2 rounded-xl font-bold border-2 border-stone-300 outline-none">
-                  {[1,2,3,4,5].map(n => <option key={n} value={n}>レベル{n}</option>)}
+                <select value={grade} onChange={(e) => setGrade(Number(e.target.value))} className="p-2 md:p-3 rounded-xl font-bold border-2 border-stone-300 outline-none focus:border-stone-500">
+                  <option value={1}>レベル1</option>
+                  <option value={2}>レベル2</option>
+                  <option value={3}>レベル3</option>
+                  <option value={4}>レベル4</option>
+                  <option value={5}>レベル5</option>
                 </select>
-                <button onClick={generatePrint} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-bold">問題をかえる</button>
-                <button onClick={handlePrint} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold">🖨️ 印刷する</button>
+                <button onClick={generatePrint} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 md:py-3 rounded-xl font-bold shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[4px] transition-all">問題をかえる</button>
+                <button onClick={handlePrint} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 md:py-3 rounded-xl font-bold shadow-[0_4px_0_#15803d] active:shadow-[0_0px_0_#15803d] active:translate-y-[4px] transition-all flex items-center gap-2">🖨️ 印刷する</button>
               </div>
             </div>
           </div>
 
           <div id="print-area" className="p-8 max-w-[210mm] mx-auto text-black bg-white">
             <div>
-              <div className="flex justify-between items-start mb-6"><h1 className="text-2xl font-bold border-b-2 border-black pb-1 w-full">レベル{grade} さんすう - {unitLabels[unit]}</h1></div>
-              <div className="flex justify-end mb-12 mx-8"><div className="flex items-end text-xl"><span className="mr-4 tracking-widest font-bold">なまえ</span><div className="w-72 border-b-2 border-black h-8"></div></div></div>
+              <div className="flex justify-between items-start mb-6"><h1 className="text-2xl font-bold border-b-2 border-black pb-1 w-full text-left">レベル{grade} さんすう - {unitLabels[unit]}</h1></div>
+              <div className="flex justify-end mb-12 mx-8"><div className="flex items-end text-xl"><span className="mr-4 tracking-widest font-bold">なまえ</span><div className="w-72 border-b-2 border-black h-8 relative"></div></div></div>
               <div className={`grid ${isTwoCols ? 'grid-cols-2 gap-x-8 gap-y-6' : 'grid-cols-1 gap-y-12'} text-xl font-bold pb-8`}>
                 {problems.map((p, i) => (
                   <div key={i} className={`flex ${isTwoCols ? 'gap-2' : 'gap-4'} items-start break-inside-avoid`}>
@@ -1200,7 +1369,23 @@
                     {p.op === '時刻と時間' ? (
                       <div className="flex flex-col gap-4 flex-1">
                         <span>{p.text}</span>
-                        {p.answerType === 'clock_read' && <ClockSVG h={p.h1} m={p.m1} size={100} />}
+                        {p.answerType === 'clock_read' ? (
+                          <ClockSVG h={p.h1} m={p.m1} size={100} />
+                        ) : (
+                          <TimeLineSVG 
+                            h1={p.h1} 
+                            m1={p.m1} 
+                            ansH={p.ans1} 
+                            ansM={p.ans2} 
+                            dm={p.dm} 
+                            dh={p.dh} 
+                            isAfter={p.isAfter} 
+                            isDuration={p.answerType === 'duration'} 
+                            h2={p.h2} 
+                            m2={p.m2} 
+                            size={80}
+                          />
+                        )}
                         <div className="flex items-center gap-4 justify-end mt-2 pr-12"><span>答え:</span><div className="w-40 border-b border-gray-400 h-6"></div></div>
                       </div>
                     ) : p.op === '長さ' ? (
@@ -1217,6 +1402,7 @@
                            `${p.q_total_small}${p.unitSmall} = （　　　）${p.unitLarge} （　　　）${p.unitSmall}`
                            }
                         </span>
+                        <div className="flex-1 border-b border-gray-400 h-6"></div>
                       </div>
                     ) : (
                       <div className="flex items-center gap-4 flex-1 pr-8">
@@ -1230,8 +1416,8 @@
             </div>
 
             <div className="page-break pt-8">
-              <div className="flex justify-between items-start mb-8"><h1 className="text-2xl font-bold border-b-2 border-black pb-1 w-full">【こたえ】レベル{grade} - {unitLabels[unit]}</h1></div>
-              <div className={`grid ${isTwoCols ? 'grid-cols-2 gap-x-8 gap-y-6' : 'grid-cols-1 gap-y-8'} text-xl font-bold pb-8`}>
+              <div className="flex justify-between items-start mb-8"><h1 className="text-2xl font-bold border-b-2 border-black pb-1 w-full text-left">レベル{grade} さんすう - {unitLabels[unit]} 【こたえ】</h1></div>
+              <div className={`grid ${isTwoCols ? 'grid-cols-2 gap-x-8 gap-y-6 md:gap-y-8' : 'grid-cols-1 gap-y-8'} text-xl font-bold pb-8`}>
                 {problems.map((p, i) => (
                   <div key={i} className="flex gap-2 items-start break-inside-avoid">
                     <span className="w-12 shrink-0 text-right">({i+1})</span>
