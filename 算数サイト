@@ -238,6 +238,8 @@ const saveMistake = (type, problem) => {
     } else {
       key = `approx_${problem.n1}_${problem.ans}`;
     }
+  } else if (problem.op === '時刻と時間') {
+    key = `clock_${problem.answerType}_${problem.ans1}_${problem.ans2}_${problem.text.length}`;
   } else {
     key = `${problem.n1}_${problem.op}_${problem.n2}`;
   }
@@ -330,6 +332,33 @@ const generateSingleProblem = (type, level) => {
         else if (pattern === 4) { if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; ans1 = m_val; ans2 = cm_val; q_total_small = ans1 * multiplier + ans2; answerType = 'unit_composite_from_small'; }
       }
       return { op: '単位', answerType, unitType, unitLarge, unitSmall, q_large, q_small, q_total_small, ans1, ans2, allowDecimal, n1: q_total_small || q_large, n2: q_small || 0, ans: ans1 };
+    }
+    case 'clock': {
+      let h1, m1, h2, m2, dh, dm, text='', answerType='clock';
+      if (level===1) {
+        h1 = Math.floor(Math.random()*12)+1; m1 = Math.floor(Math.random()*12)*5; 
+        return { op:'時刻と時間', text:'今、何時 何分 ですか？', h1, m1, ans1:h1, ans2:m1, answerType:'clock_read' };
+      } else if (level===2) {
+        h1 = Math.floor(Math.random()*12)+1; let isAfter = Math.random()<0.5;
+        if(isAfter){ m1=Math.floor(Math.random()*4)*10+10; dm=Math.floor(Math.random()*((50-m1)/10))*10+10; text=`${h1}時 ${m1}分の ${dm}分後は、\n何時 何分 ですか？`; m2=m1+dm; }
+        else{ m1=Math.floor(Math.random()*4)*10+20; dm=Math.floor(Math.random()*(m1/10))*10+10; if(m1-dm<0)dm=m1; text=`${h1}時 ${m1}分の ${dm}分前は、\n何時 何分 ですか？`; m2=m1-dm; }
+        return { op:'時刻と時間', text, h1, m1, ans1:h1, ans2:m2, dm, dh:0, isAfter, answerType:'clock' };
+      } else if (level===3) {
+        h1 = Math.floor(Math.random()*12)+1; let isAfter = Math.random()<0.5;
+        if(isAfter){ m1=Math.floor(Math.random()*3)*10+30; dm=Math.floor(Math.random()*3)*10+20; text=`${h1}時 ${m1}分の ${dm}分後は、\n何時 何分 ですか？`; let totalM=m1+dm; h2=h1+Math.floor(totalM/60); m2=totalM%60; if(h2>12)h2-=12; }
+        else{ m1=Math.floor(Math.random()*3)*10; dm=Math.floor(Math.random()*3)*10+20; text=`${h1}時 ${m1}分の ${dm}分前は、\n何時 何分 ですか？`; let totalM=m1-dm; h2=h1-1; m2=60+totalM; if(h2<=0)h2+=12; }
+        return { op:'時刻と時間', text, h1, m1, ans1:h2, ans2:m2, dm, dh:0, isAfter, answerType:'clock' };
+      } else if (level===4) {
+         h1=Math.floor(Math.random()*12)+1; m1=Math.floor(Math.random()*6)*10; dh=Math.floor(Math.random()*3)+1; dm=Math.floor(Math.random()*5)*10+10;
+         let isAfter = Math.random()<0.5;
+         if(isAfter){ text=`${h1}時 ${m1}分の\n${dh}時間 ${dm}分後は 何時何分 ですか？`; let totalM=m1+dm; h2=h1+dh+Math.floor(totalM/60); m2=totalM%60; while(h2>12)h2-=12; }
+         else{ text=`${h1}時 ${m1}分の\n${dh}時間 ${dm}分前は 何時何分 ですか？`; let totalM=m1-dm; h2=h1-dh; if(totalM<0){h2-=1;m2=60+totalM;}else{m2=totalM;} while(h2<=0)h2+=12; }
+         return { op:'時刻と時間', text, h1, m1, ans1:h2, ans2:m2, dm, dh, isAfter, answerType:'clock' };
+      } else {
+         h1=Math.floor(Math.random()*8)+1; m1=Math.floor(Math.random()*6)*10; dh=Math.floor(Math.random()*3); dm=Math.floor(Math.random()*5)*10+10; if(dh===0&&dm===0)dm=30;
+         let totalM2 = h1*60+m1 + dh*60+dm; h2 = Math.floor(totalM2/60); m2 = totalM2%60; if(h2>12)h2-=12;
+         return { op:'時刻と時間', text:`${h1}時 ${m1}分 から ${h2}時 ${m2}分 までは、\n何時間 何分 ですか？`, h1, m1, h2, m2, ans1:dh, ans2:dm, answerType:'duration' };
+      }
     }
     case 'word_problem': {
       let text = '', ans = 0, equation = '';
@@ -455,20 +484,7 @@ const generateSingleProblem = (type, level) => {
 
 const generateProblem = (type, level, prevProblem = null) => {
   let newProblem;
-  do {
-    newProblem = generateSingleProblem(type, level);
-  } while (
-    prevProblem &&
-    newProblem.n1 === prevProblem.n1 &&
-    newProblem.n2 === prevProblem.n2 &&
-    newProblem.op === prevProblem.op &&
-    newProblem.ans === prevProblem.ans &&
-    newProblem.ansNum === prevProblem.ansNum &&
-    newProblem.ansTotalMm === prevProblem.ansTotalMm &&
-    newProblem.q_total_small === prevProblem.q_total_small &&
-    newProblem.q_large === prevProblem.q_large &&
-    newProblem.text === prevProblem.text
-  );
+  do { newProblem = generateSingleProblem(type, level); } while (prevProblem && newProblem.text === prevProblem.text && newProblem.ans === prevProblem.ans);
   return newProblem;
 };
 
@@ -491,7 +507,7 @@ const GridBackground = () => (
 const VerticalMath = ({ problem }) => {
   const { n1, n2, op } = problem;
   
-  if (op === '数直線' || op === '長さ' || op === '単位' || op === '文章問題' || op === 'がい数') return null;
+  if (op === '数直線' || op === '長さ' || op === '単位' || op === '文章問題' || op === 'がい数' || op === '時刻と時間') return null;
 
   if (op === '÷') {
     const n1Chars = String(n1).split('');
@@ -575,7 +591,7 @@ const VerticalMath = ({ problem }) => {
 };
 
 // ---------------------------------------------------------
-// ものさし描画コンポーネント
+// 定規描画コンポーネント
 // ---------------------------------------------------------
 const RulerSVG = ({ totalMm, maxCm }) => {
   const width = 800; 
@@ -741,12 +757,12 @@ const DrawCanvas = forwardRef(({ clearKey }, ref) => {
 // ---------------------------------------------------------
 const HomeView = ({ setType, setView }) => {
   const [dailyComment, setDailyComment] = useState('');
-  const [typePoints, setTypePoints] = useState({ add: 0, sub: 0, mul: 0, div: 0, number_line: 0, length: 0, unit: 0, word_problem: 0, approx: 0 });
+  const [typePoints, setTypePoints] = useState({ add: 0, sub: 0, mul: 0, div: 0, number_line: 0, length: 0, unit: 0, word_problem: 0, approx: 0, clock: 0 });
   const [unlockedMessages, setUnlockedMessages] = useState([]);
 
   const [order, setOrder] = useState(() => {
     const savedOrder = localStorage.getItem('sansu_button_order_v2');
-    const defaultOrder = ['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'print'];
+    const defaultOrder = ['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'clock', 'print'];
     if (savedOrder) {
       try {
         const parsed = JSON.parse(savedOrder);
@@ -841,7 +857,8 @@ const HomeView = ({ setType, setView }) => {
       number_line: calcTypeTotal('number_line'),
       length: calcTypeTotal('length'),
       unit: calcTypeTotal('unit'),
-      word_problem: calcTypeTotal('word_problem')
+      word_problem: calcTypeTotal('word_problem'),
+      clock: calcTypeTotal('clock')
     };
     setTypePoints(pts);
 
@@ -871,18 +888,19 @@ const HomeView = ({ setType, setView }) => {
 
   }, []);
 
-  const totalAllPoints = typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem;
+  const totalAllPoints = typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem + typePoints.clock;
 
   const unlockConditions = {
     word_problem: 100,
     length: 200,
     approx: 300,
     number_line: 400,
-    unit: 500
+    unit: 500,
+    clock: 0
   };
 
   const isUnlocked = (key) => {
-    if (!unlockConditions[key]) return true;
+    if (unlockConditions[key] === undefined) return true;
     return totalAllPoints >= unlockConditions[key];
   };
 
@@ -937,7 +955,7 @@ const HomeView = ({ setType, setView }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {order.map((key, index) => {
             const buttonData = {
-              add: { label: 'たしざん', bg: 'bg-red-400 hover:bg-red-500', shadow: 'shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', iconText: '+', iconColor: 'text-red-200 group-hover:text-red-100', iconSize: 'text-3xl' },
+              add: { label: 'たしざん', bg: 'bg-red-400 hover:bg-red-50', shadow: 'shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', iconText: '+', iconColor: 'text-red-200 group-hover:text-red-100', iconSize: 'text-3xl' },
               sub: { label: <span>ひき<ruby>算<rt>ざん</rt></ruby></span>, bg: 'bg-blue-400 hover:bg-blue-500', shadow: 'shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', iconText: '-', iconColor: 'text-blue-200 group-hover:text-blue-100', iconSize: 'text-4xl' },
               mul: { label: <span>かけ<ruby>算<rt>ざん</rt></ruby></span>, bg: 'bg-green-400 hover:bg-green-500', shadow: 'shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', iconText: '×', iconColor: 'text-green-200 group-hover:text-green-100', iconSize: 'text-3xl' },
               div: { label: <span>わり<ruby>算<rt>ざん</rt></ruby></span>, bg: 'bg-purple-400 hover:bg-purple-500', shadow: 'shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', iconText: '÷', iconColor: 'text-purple-200 group-hover:text-purple-100', iconSize: 'text-3xl' },
@@ -945,6 +963,7 @@ const HomeView = ({ setType, setView }) => {
               number_line: { label: <span><ruby>数直線<rt>すうちょくせん</rt></ruby></span>, bg: 'bg-pink-400 hover:bg-pink-500', shadow: 'shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', iconText: '📏', iconColor: 'text-pink-200 group-hover:text-pink-100', iconSize: 'text-4xl', iconPos: 'right-8' },
               length: { label: <span><ruby>長<rt>なが</rt></ruby>さ</span>, bg: 'bg-teal-400 hover:bg-teal-500', shadow: 'shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', iconText: '📐', iconColor: 'text-teal-200 group-hover:text-teal-100', iconSize: 'text-4xl', iconPos: 'right-8' },
               unit: { label: <span><ruby>単位<rt>たんい</rt></ruby></span>, bg: 'bg-cyan-400 hover:bg-cyan-500', shadow: 'shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', iconText: '🔄', iconColor: 'text-cyan-200 group-hover:text-cyan-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+              clock: { label: <span><ruby>時刻<rt>じこく</rt></ruby>と<ruby>時間<rt>じかん</rt></ruby></span>, bg: 'bg-lime-400 hover:bg-lime-500', shadow: 'shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', iconText: '⏱️', iconColor: 'text-lime-200 group-hover:text-lime-100', iconSize: 'text-4xl', iconPos: 'right-8' },
               word_problem: { label: <span><ruby>文章問題<rt>ぶんしょうもんだい</rt></ruby></span>, bg: 'bg-indigo-400 hover:bg-indigo-500', shadow: 'shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', iconText: '📖', iconColor: 'text-indigo-200 group-hover:text-indigo-100', iconSize: 'text-4xl', iconPos: 'right-8' },
               print: { label: <span>プリント<ruby>印刷<rt>いんさつ</rt></ruby></span>, bg: 'bg-stone-400 hover:bg-stone-500', shadow: 'shadow-[0_6px_0_#57534e] active:shadow-[0_0px_0_#57534e]', iconText: '🖨️', iconColor: 'text-stone-200 group-hover:text-stone-100', iconSize: 'text-4xl', iconPos: 'right-8' }
             };
@@ -1028,7 +1047,8 @@ const RecordsView = ({ setView }) => {
       { key: 'length', label: '長さ', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-200' },
       { key: 'approx', label: 'がい数', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
       { key: 'number_line', label: '数直線', color: 'text-pink-700', bg: 'bg-pink-50', border: 'border-pink-200' },
-      { key: 'unit', label: '単位', color: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-cyan-200' }
+      { key: 'unit', label: '単位', color: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+      { key: 'clock', label: '時刻と時間', color: 'text-lime-700', bg: 'bg-lime-50', border: 'border-lime-200' }
     ];
 
     const list = [];
@@ -1169,10 +1189,10 @@ const RecordsView = ({ setView }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-              {['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit'].map(type => {
+              {['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'clock'].map(type => {
                 if (!mistakes[type] || Object.keys(mistakes[type]).length === 0) return null;
                 const typeMistakes = mistakes[type];
-                const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題' }[type];
+                const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題', clock: '時刻と時間' }[type];
                 
                 return Object.keys(typeMistakes).map(key => {
                   const m = typeMistakes[key];
@@ -1187,10 +1207,11 @@ const RecordsView = ({ setView }) => {
                                m.op === '単位' ? (
                                  m.answerType === 'unit_m' || m.answerType === 'unit_large' ? `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'}` : 
                                  m.answerType === 'unit_cm' || m.answerType === 'unit_small' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
-                                 m.answerType === 'unit_cm_from_m_cm' || m.answerType === 'unit_small_from_composite' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} ${m.q_cm || m.q_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
+                                 m.answerType === 'unit_cm_from_m_cm' || m.answerType === 'unit_small_from_composite' ? `${m.q_m || m.q_large}${m.unitLarge || 'm'} ${m.q_small || m.q_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
                                  `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'} ${m.ans2}${m.unitSmall || 'cm'}`
                                ) : 
                                m.op === '文章問題' || m.op === 'がい数' ? m.text : 
+                               m.op === '時刻と時間' ? m.text : 
                                `${m.n1} ${m.op} ${m.n2}`
                              }>
                           {m.op === '数直線' ? `数直線 (開始${m.n1} 間隔${m.n2})` : 
@@ -1202,6 +1223,7 @@ const RecordsView = ({ setView }) => {
                              `${m.q_total_cm || m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'} ${m.ans2}${m.unitSmall || 'cm'}`
                            ) :
                            m.op === '文章問題' || m.op === 'がい数' ? m.text : 
+                           m.op === '時刻と時間' ? m.text : 
                            `${m.n1} ${m.op} ${m.n2}`}
                         </div>
                       </div>
@@ -1256,6 +1278,7 @@ const LevelView = ({ type, setView, setLevel }) => {
   };
 
   const isLevelUnlocked = (lv) => {
+    if (type === 'clock') return true; // 時刻と時間は全レベル解放
     if (lv === 1 || lv === 2) return true;
     if (lv === 3) return isLevelCleared(2);
     if (lv === 4) return isLevelCleared(3);
@@ -1272,6 +1295,7 @@ const LevelView = ({ type, setView, setLevel }) => {
     number_line: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', btn: 'bg-pink-400 hover:bg-pink-500 shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', title: '数直線' },
     length: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', btn: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', title: '長さ' },
     unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', btn: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', title: '単位' },
+    clock: { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200', btn: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', title: '時刻と時間' },
     word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', btn: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', title: '文章問題' }
   }[type];
 
@@ -1334,6 +1358,7 @@ const CourseView = ({ type, level, setView, setCourse }) => {
     number_line: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', btnCount: 'bg-pink-400 hover:bg-pink-500 shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', btnTime: 'bg-rose-400 hover:bg-rose-500 shadow-[0_6px_0_#9f1239] active:shadow-[0_0px_0_#9f1239]', title: '数直線' },
     length: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', btnCount: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', btnTime: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857] active:shadow-[0_0px_0_#047857]', title: '長さ' },
     unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', btnCount: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', btnTime: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0284c7] active:shadow-[0_0px_0_#0284c7]', title: '単位' },
+    clock: { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200', btnCount: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', btnTime: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', title: '時刻と時間' },
     word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', btnCount: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', btnTime: 'bg-violet-400 hover:bg-violet-500 shadow-[0_6px_0_#5b21b6] active:shadow-[0_0px_0_#5b21b6]', title: '文章問題' }
   }[type];
 
@@ -1480,6 +1505,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
   const lastActionTimeRef = useRef(Date.now());
   const canvasRef = useRef(null);
   const [clearKey, setClearKey] = useState(Date.now());
+  const [showHint, setShowHint] = useState(false); // ヒント表示用のステート
 
   const theme = {
     add: { bg: 'bg-red-50', text: 'text-red-500', title: 'たしざん' },
@@ -1490,6 +1516,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
     number_line: { bg: 'bg-pink-50', text: 'text-pink-500', title: '数直線' },
     length: { bg: 'bg-teal-50', text: 'text-teal-500', title: '長さ' },
     unit: { bg: 'bg-cyan-50', text: 'text-cyan-500', title: '単位' },
+    clock: { bg: 'bg-lime-50', text: 'text-lime-500', title: '時刻と時間' },
     word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-500', title: '文章問題' }
   }[type];
 
@@ -1498,9 +1525,10 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
   const isUnit = problem.op === '単位';
   const isWordProblem = problem.op === '文章問題';
   const isApprox = problem.op === 'がい数';
+  const isClock = problem.op === '時刻と時間';
   
   // 右側に筆算スペース（かきこみエリア）を表示するかどうか
-  const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox;
+  const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox && !isClock;
 
   const handleCheck = useCallback(() => {
     if (countdown !== null) return;
@@ -1510,7 +1538,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
     let isCorrectRem = true;
     const hasRem = problem.rem !== undefined;
 
-    if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) {
+    if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
        if (!userInput) return;
        if (hasRem && !userInputRem) return;
        isCorrectAns = parseInt(userInput) === problem.ans;
@@ -1542,6 +1570,9 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
     } else if (problem.answerType === 'approx_range') {
        if (!userInputApprox1 || !userInputApprox2) return;
        isCorrectAns = parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2;
+    } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
+       if (!userInputUnit1 || !userInputUnit2) return;
+       isCorrectAns = parseInt(userInputUnit1) === problem.ans1 && parseInt(userInputUnit2) === problem.ans2;
     }
     
     const delayTime = isWordProblem ? 3000 : 750;
@@ -1553,7 +1584,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
       setScore(newScore);
       
       if (!isFinishedRef.current) {
-        addPoints(type, level, course.mode, course.value, 1 * level); 
+        addPointsLocal(type, level, course.mode, course.value, 1 * level); 
       }
       
       if (course.mode === 'count' && newScore >= course.value) {
@@ -1565,13 +1596,13 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
           let bonusPoints = 0;
           if (isNewRecord) {
             bonusPoints += 10 * level;
-            addPoints(type, level, 'count', course.value, 10 * level);
+            addPointsLocal(type, level, 'count', course.value, 10 * level);
           }
           
           const allClearBonus = checkAndApplyAllClearBonus(type, level);
           if (allClearBonus > 0) {
             bonusPoints += allClearBonus;
-            addPoints(type, level, 'count', course.value, allClearBonus);
+            addPointsLocal(type, level, 'count', course.value, allClearBonus);
           }
 
           let earnedPoints = (newScore * level) + bonusPoints;
@@ -1607,6 +1638,8 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
              setFocusedInput('unit1');
           } else if (newProb.answerType === 'approx_range') {
              setFocusedInput('approx1');
+          } else if (newProb.answerType === 'clock' || newProb.answerType === 'clock_read' || newProb.answerType === 'duration') {
+             setFocusedInput('unit1');
           } else {
              setFocusedInput('ans');
           }
@@ -1614,10 +1647,11 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
           setStatus('idle');
           setClearKey(Date.now());
           setCurrentProblemMistakes(0);
+          setShowHint(false); // 新問移行時にヒントをかくす
         }, delayTime);
       }
     } else {
-      saveMistake(type, problem);
+      saveMistakeLocal(type, problem);
       setStatus('wrong');
       setUserInput('');
       setUserInputRem('');
@@ -1643,6 +1677,8 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
          setFocusedInput('unit1');
       } else if (problem.answerType === 'approx_range') {
          setFocusedInput('approx1');
+      } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
+         setFocusedInput('unit1');
       } else {
          setFocusedInput('ans');
       }
@@ -1663,7 +1699,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
         setTimeout(() => setStatus('idle'), wrongDelayTime);
       }
     }
-  }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, score, course, startTime, setResult, setView, mistakes, isWordProblem, isApprox, isLength, isUnit, type, level]);
+  }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, score, course, startTime, setResult, setView, mistakes, isWordProblem, isApprox, isLength, isUnit, isClock, type, level]);
 
   useEffect(() => {
     const newProb = generateProblem(type, level);
@@ -1692,6 +1728,8 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
        setFocusedInput('unit1');
     } else if (newProb.answerType === 'approx_range') {
        setFocusedInput('approx1');
+    } else if (newProb.answerType === 'clock' || newProb.answerType === 'clock_read' || newProb.answerType === 'duration') {
+       setFocusedInput('unit1');
     } else {
        setFocusedInput('ans');
     }
@@ -1706,6 +1744,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
     setClearKey(Date.now());
     isFinishedRef.current = false;
     lastActionTimeRef.current = Date.now();
+    setShowHint(false); // 初期リセット
     
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -1755,30 +1794,29 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
   const elapsedSec = startTime && now ? Math.floor((now - startTime) / 1000) : 0;
   const timeLeft = course.mode === 'time' ? Math.max(0, course.value - elapsedSec) : null;
 
+  // --- タイムアウト監視用エフェクト ---
   useEffect(() => {
-    if (course.mode === 'time' && timeLeft === 0 && status !== 'correct' && !isFinishedRef.current) {
+    if (course.mode === 'time' && timeLeft !== null && timeLeft <= 0 && !isFinishedRef.current) {
       isFinishedRef.current = true;
       
       if (score === 0) {
-        setTimeout(() => {
-          setResult({ isGameOver: true, reason: 'timeout_zero', earnedPoints: 0 });
-          setView('result');
-        }, 500);
+        setResult({ isGameOver: true, reason: 'timeout_zero', earnedPoints: 0 });
+        setView('result');
         return;
       }
       
-      const isNewRecord = saveRecord(type, level, 'time', course.value, score);
+      const isNewRecord = saveRecordLocal(type, level, 'time', course.value, score);
       
       let bonusPoints = 0;
       if (isNewRecord) {
         bonusPoints += 10 * level; 
-        addPoints(type, level, 'time', course.value, 10 * level);
+        addPointsLocal(type, level, 'time', course.value, 10 * level);
       }
       
       const allClearBonus = checkAndApplyAllClearBonus(type, level);
       if (allClearBonus > 0) {
         bonusPoints += allClearBonus;
-        addPoints(type, level, 'time', course.value, allClearBonus);
+        addPointsLocal(type, level, 'time', course.value, allClearBonus);
       }
 
       let earnedPoints = (score * level) + bonusPoints;
@@ -1786,7 +1824,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
       setResult({ score, mode: 'time', value: course.value, isNewRecord, earnedPoints });
       setView('result');
     }
-  }, [timeLeft, course.mode, score, course.value, setView, setResult, status, type, level]);
+  }, [timeLeft, course.mode, score, course.value, setView, setResult, type, level]);
 
   const handleInput = useCallback((numStr) => {
     if (countdown !== null) return;
@@ -1847,10 +1885,11 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
     }
   }, [status, countdown, focusedInput]);
 
+  // --- キーボード入力と「正解時の即時自動ピンポンクリア判定」システム ---
   useEffect(() => {
     if (countdown === null && status !== 'correct') {
       const hasRem = problem.rem !== undefined;
-      if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) {
+      if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
         if (hasRem) {
           if (focusedInput === 'ans' && userInput && parseInt(userInput) === problem.ans) {
             setFocusedInput('rem');
@@ -1900,6 +1939,13 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
          if (userInputApprox1 && userInputApprox2 && parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2) {
            handleCheck();
          }
+      } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
+         if (focusedInput === 'unit1' && userInputUnit1 && parseInt(userInputUnit1) === problem.ans1) {
+           setFocusedInput('unit2');
+         }
+         if (userInputUnit1 && userInputUnit2 && parseInt(userInputUnit1) === problem.ans1 && parseInt(userInputUnit2) === problem.ans2) {
+           handleCheck();
+         }
       }
 
       // --- 3桁以上入力時の自動不正解判定 ---
@@ -1912,7 +1958,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
         return true;
       };
 
-      if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) {
+      if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
         if (focusedInput === 'ans' && checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
         if (focusedInput === 'rem' && checkWrong(userInputRem, problem.rem)) shouldAutoCheckWrong = true;
       } else if (problem.answerType === 'decimal') {
@@ -1939,13 +1985,16 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
       } else if (problem.answerType === 'approx_range') {
         if (focusedInput === 'approx1' && checkWrong(userInputApprox1, problem.ans1)) shouldAutoCheckWrong = true;
         if (focusedInput === 'approx2' && checkWrong(userInputApprox2, problem.ans2)) shouldAutoCheckWrong = true;
+      } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
+        if (focusedInput === 'unit1' && checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
+        if (focusedInput === 'unit2' && checkWrong(userInputUnit2, problem.ans2)) shouldAutoCheckWrong = true;
       }
 
       if (shouldAutoCheckWrong) {
         handleCheck();
       }
     }
-  }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, handleCheck, countdown, focusedInput, isLength, isUnit, isWordProblem, isApprox]);
+  }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, handleCheck, countdown, focusedInput, isLength, isUnit, isWordProblem, isApprox, isClock]);
 
   useEffect(() => {
     if (countdown !== null) return;
@@ -1984,7 +2033,7 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
           </div>
         </div>
       );
-    } else if (p.answerType === 'integer' || (!p.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isNumberLine)) {
+    } else if (p.answerType === 'integer' || (!p.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isNumberLine && !isClock)) {
       return p.rem !== undefined ? <span>{p.ans} あまり {p.rem}</span> : <span>{p.ans}</span>;
     } else if (p.answerType === 'length_cm') {
       return <span>{p.ansCm} cm</span>;
@@ -2000,13 +2049,17 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
       return <span>{p.ans1} {p.unitLarge} {p.ans2} {p.unitSmall}</span>;
     } else if (p.answerType === 'approx_range') {
       return <span className="text-2xl md:text-3xl">{p.ans1} 以上、 {p.ans2} 未満</span>;
+    } else if (p.answerType === 'clock' || p.answerType === 'clock_read') {
+      return <span>{p.ans1} 時 {p.ans2} 分</span>;
+    } else if (p.answerType === 'duration') {
+      return <span>{p.ans1} 時間 {p.ans2} 分</span>;
     }
     return <span>{p.ans}</span>;
   };
 
   const renderNumpad = () => {
     const canSubmit = !(countdown !== null || (
-      (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox)) ? (!userInput || (problem.rem !== undefined && !userInputRem)) :
+      (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) ? (!userInput || (problem.rem !== undefined && !userInputRem)) :
       problem.answerType === 'decimal' ? !userInput :
       (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') ? (!userInputNum || !userInputDen) :
       problem.answerType === 'fraction_mixed' ? (!userInputInt || !userInputNum || !userInputDen) :
@@ -2016,11 +2069,12 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
       (problem.answerType === 'unit_large' || problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite') ? !userInputUnit1 :
       problem.answerType === 'unit_composite_from_small' ? (!userInputUnit1 || !userInputUnit2) :
       problem.answerType === 'approx_range' ? (!userInputApprox1 || !userInputApprox2) :
+      (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') ? (!userInputUnit1 || !userInputUnit2) :
       true
     ));
 
     return (
-      <div className={`w-full ${isNumberLine || isLength || isUnit || isApprox ? 'max-w-xl' : 'max-w-md'} flex flex-col gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2 relative z-10`}>
+      <div className={`w-full ${isNumberLine || isLength || isUnit || isApprox || isClock ? 'max-w-xl' : 'max-w-md'} flex flex-col gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2 relative z-10`}>
         <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
             <button
@@ -2142,228 +2196,137 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
                   </div>
                 )}
 
-                {isNumberLine ? (
-                  <div className="w-full flex justify-center items-center py-6 mt-4 sm:mt-8 relative px-2 sm:px-10">
-                    <svg width="100%" height="240" viewBox="0 0 1000 240" className="overflow-visible">
-                      <line x1="40" y1="120" x2="960" y2="120" stroke="#4b5563" strokeWidth="6" strokeLinecap="round" />
-                      <polygon points="960,110 980,120 960,130" fill="#4b5563" />
-                      {problem.labels && problem.labels.map((label, i) => {
-                        const x = 80 + (840 / (problem.count - 1)) * i;
-                        return (
-                          <g key={i}>
-                            <line x1={x} y1="60" x2={x} y2="100" stroke="#4b5563" strokeWidth="4" strokeLinecap="round" />
-                            {typeof label === 'object' ? (
-                                label.int > 0 ? (
-                                  <g>
-                                    <text x={x-30} y="200" textAnchor="middle" fontSize="48" fontWeight="bold" fill="#4b5563">{label.int}</text>
-                                    <text x={x+20} y="180" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.num}</text>
-                                    <line x1={x} y1="190" x2={x+40} y2="190" stroke="#4b5563" strokeWidth="3" />
-                                    <text x={x+20} y="230" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.den}</text>
-                                  </g>
-                                ) : (
-                                  <g>
-                                    <text x={x} y="180" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.num}</text>
-                                    <line x1={x-20} y1="190" x2={x+20} y2="190" stroke="#4b5563" strokeWidth="3" />
-                                    <text x={x} y="230" textAnchor="middle" fontSize="36" fontWeight="bold" fill="#4b5563">{label.den}</text>
-                                  </g>
-                                )
-                            ) : (
-                                <text x={x} y="200" textAnchor="middle" fontSize={label === '?' ? "72" : "48"} fontWeight="bold" fill={label === '?' ? "#f97316" : "#4b5563"}>
-                                  {label}
-                                </text>
-                            )}
-                          </g>
-                        );
-                      })}
-                    </svg>
+                {isClock && (
+                  <div className="w-full flex flex-col items-center p-2">
+                     <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{problem.text}</span>
+                     
+                     {/* ヒントボタン */}
+                     <div className="mb-4">
+                       <button 
+                         onClick={() => setShowHint(prev => !prev)} 
+                         className={`px-6 py-2.5 rounded-2xl font-bold shadow-sm border transition-all flex items-center gap-2 ${
+                           showHint 
+                             ? 'bg-amber-400 text-white border-amber-500 hover:bg-amber-500' 
+                             : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
+                         }`}
+                       >
+                         <span>💡</span> <span>{showHint ? 'ヒントを かくす' : 'ヒントを みる'}</span>
+                       </button>
+                     </div>
+
+                     {/* ヒントがオンの時のみ、時計または数直線を描画 */}
+                     {showHint && (
+                       <div className="w-full flex justify-center animate-in fade-in zoom-in duration-200">
+                         {problem.answerType === 'clock_read' ? (
+                           <ClockSVG h={problem.h1} m={problem.m1} size={150} />
+                         ) : (
+                           <TimeLineSVG 
+                             h1={problem.h1} 
+                             m1={problem.m1} 
+                             ansH={problem.ans1} 
+                             ansM={problem.ans2} 
+                             dm={problem.dm} 
+                             dh={problem.dh} 
+                             isAfter={problem.isAfter} 
+                             isDuration={problem.answerType === 'duration'} 
+                             h2={problem.h2} 
+                             m2={problem.m2} 
+                           />
+                         )}
+                       </div>
+                     )}
                   </div>
-                ) : isLength ? (
-                  <div className="w-full flex justify-center items-center py-6 mt-4 sm:mt-8 relative px-2 sm:px-10">
-                    <RulerSVG totalMm={problem.ansTotalMm} maxCm={problem.maxCm} />
-                  </div>
-                ) : isUnit ? (
-                  <div className="text-3xl sm:text-4xl md:text-6xl font-bold text-center tracking-widest text-gray-800 flex flex-wrap justify-center items-center gap-1 sm:gap-3 md:gap-5 mt-2 sm:mt-4 md:mt-6 px-2">
-                    {(problem.answerType === 'unit_large') && <span>{problem.q_total_small}{problem.unitSmall} =</span>}
-                    {(problem.answerType === 'unit_small') && <span>{problem.q_large}{problem.unitLarge} =</span>}
-                    {(problem.answerType === 'unit_small_from_composite') && <span>{problem.q_large}{problem.unitLarge} {problem.q_small}{problem.unitSmall} =</span>}
-                    {(problem.answerType === 'unit_composite_from_small') && <span>{problem.q_total_small}{problem.unitSmall} =</span>}
-                  </div>
-                ) : (!isWordProblem && !isApprox) ? (
-                  <div className="text-3xl sm:text-5xl md:text-7xl font-bold text-center tracking-widest text-gray-800 flex justify-center items-center gap-1 sm:gap-3 md:gap-5 mt-2 sm:mt-4 md:mt-6">
-                    <span>{problem.n1}</span>
-                    <span className={theme.text}>{problem.op}</span>
-                    <span>{problem.n2}</span>
-                    <span className={theme.text}>=</span>
-                  </div>
+                )}
+
+                {!isClock && !hasRightPanel ? (
+                  <div className="w-full text-2xl font-bold text-center mt-4 whitespace-pre-wrap">{problem.text || (problem.op==='長さ'?<RulerSVG totalMm={problem.ansTotalMm} maxCm={problem.maxCm}/>:null)}</div>
+                ) : !isClock ? (
+                  <div className="text-5xl md:text-7xl font-bold text-center mt-8 tracking-widest">{problem.n1} {problem.op} {problem.n2} = </div>
                 ) : null}
-                
-                <div className={`mt-4 sm:mt-6 flex justify-center items-end gap-1 sm:gap-3`}>
-                   {problem.answerType === 'integer' || problem.answerType === 'decimal' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox) ? (
-                      <div 
-                        onClick={() => setFocusedInput('ans')}
-                        className={`cursor-pointer w-24 h-16 sm:w-40 sm:h-28 md:w-48 md:h-32 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'ans' ? 'ring-4 ring-orange-400' : ''} ${userInput ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                      >
-                        {userInput || '?'}
-                      </div>
-                   ) : problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper' ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <div 
-                          onClick={() => setFocusedInput('num')}
-                          className={`cursor-pointer w-24 h-20 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'num' ? 'ring-4 ring-orange-400' : ''} ${userInputNum ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputNum || '?'}
-                        </div>
-                        <div className="w-32 sm:w-40 h-2 bg-gray-800 rounded-full"></div>
-                        <div 
-                          onClick={() => setFocusedInput('den')}
-                          className={`cursor-pointer w-24 h-20 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'den' ? 'ring-4 ring-orange-400' : ''} ${userInputDen ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputDen || '?'}
-                        </div>
-                      </div>
-                   ) : problem.answerType === 'fraction_mixed' ? (
-                      <div className="flex items-center gap-4">
-                        <div 
-                          onClick={() => setFocusedInput('int')}
-                          className={`cursor-pointer w-28 h-32 sm:w-36 sm:h-40 bg-gray-100 rounded-xl flex items-center justify-center text-5xl sm:text-6xl font-bold shadow-inner ${focusedInput === 'int' ? 'ring-4 ring-orange-400' : ''} ${userInputInt ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputInt || '?'}
-                        </div>
-                        <div className="flex flex-col items-center gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('num')}
-                            className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-20 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'num' ? 'ring-4 ring-orange-400' : ''} ${userInputNum ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputNum || '?'}
-                          </div>
-                          <div className="w-28 sm:w-40 h-2 bg-gray-800 rounded-full"></div>
-                          <div 
-                            onClick={() => setFocusedInput('den')}
-                            className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-20 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'den' ? 'ring-4 ring-orange-400' : ''} ${userInputDen ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputDen || '?'}
-                          </div>
-                        </div>
-                      </div>
-                   ) : problem.answerType === 'length_cm' ? (
-                      <div className="flex items-center gap-2">
-                        <div 
-                          onClick={() => setFocusedInput('cm')}
-                          className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'cm' ? 'ring-4 ring-orange-400' : ''} ${userInputCm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputCm || '?'}
-                        </div>
-                        <span className="text-2xl sm:text-4xl font-bold text-gray-800">cm</span>
-                      </div>
-                   ) : problem.answerType === 'length_mm' ? (
-                      <div className="flex items-center gap-2">
-                        <div 
-                          onClick={() => setFocusedInput('mm')}
-                          className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputMm || '?'}
-                        </div>
-                        <span className="text-2xl sm:text-4xl font-bold text-gray-800">mm</span>
-                      </div>
-                   ) : problem.answerType === 'length_cm_mm' ? (
-                      <div className="flex items-center gap-2 sm:gap-4">
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('cm')}
-                            className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'cm' ? 'ring-4 ring-orange-400' : ''} ${userInputCm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputCm || '?'}
-                          </div>
-                          <span className="text-xl sm:text-3xl font-bold text-gray-800">cm</span>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('mm')}
-                            className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputMm || '?'}
-                          </div>
-                          <span className="text-xl sm:text-3xl font-bold text-gray-800">mm</span>
-                        </div>
-                      </div>
-                   ) : problem.answerType === 'unit_large' ? (
-                      <div className="flex items-center gap-2">
-                        <div 
-                          onClick={() => setFocusedInput('unit1')}
-                          className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'unit1' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputUnit1 || '?'}
-                        </div>
-                        <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitLarge}</span>
-                      </div>
-                   ) : problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite' ? (
-                      <div className="flex items-center gap-2">
-                        <div 
-                          onClick={() => setFocusedInput('unit1')}
-                          className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 md:w-40 md:h-28 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl md:text-6xl font-bold shadow-inner ${focusedInput === 'unit1' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputUnit1 || '?'}
-                        </div>
-                        <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitSmall}</span>
-                      </div>
-                   ) : problem.answerType === 'unit_composite_from_small' ? (
-                      <div className="flex items-center gap-2 sm:gap-4">
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('unit1')}
-                            className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'unit1' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputUnit1 || '?'}
-                          </div>
-                          <span className="text-xl sm:text-3xl font-bold text-gray-800">{problem.unitLarge}</span>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('unit2')}
-                            className={`cursor-pointer w-20 h-16 sm:w-28 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'unit2' ? 'ring-4 ring-orange-400' : ''} ${userInputUnit2 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputUnit2 || '?'}
-                          </div>
-                          <span className="text-xl sm:text-3xl font-bold text-gray-800">{problem.unitSmall}</span>
-                        </div>
-                      </div>
-                   ) : problem.answerType === 'approx_range' ? (
-                      <div className="flex items-center gap-2 sm:gap-4">
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('approx1')}
-                            className={`cursor-pointer w-24 h-16 sm:w-36 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'approx1' ? 'ring-4 ring-orange-400' : ''} ${userInputApprox1 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputApprox1 || '?'}
-                          </div>
-                          <span className="text-xl sm:text-3xl font-bold text-gray-800">以上</span>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2">
-                          <div 
-                            onClick={() => setFocusedInput('approx2')}
-                            className={`cursor-pointer w-24 h-16 sm:w-36 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'approx2' ? 'ring-4 ring-orange-400' : ''} ${userInputApprox2 ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                          >
-                            {userInputApprox2 || '?'}
-                          </div>
-                          <span className="text-xl sm:text-3xl font-bold text-gray-800">未満</span>
-                        </div>
-                      </div>
-                   ) : null}
-                  
-                  {problem.rem !== undefined && !isLength && !isUnit && !isWordProblem && !isApprox && (
-                      <React.Fragment>
-                        <div className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 mb-2 sm:mb-4 whitespace-nowrap">あまり</div>
-                        <div 
-                          onClick={() => setFocusedInput('rem')}
-                          className={`cursor-pointer w-16 h-16 sm:w-28 sm:h-24 md:w-32 md:h-28 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-6xl md:text-7xl font-bold shadow-inner ${focusedInput === 'rem' ? 'ring-4 ring-orange-400' : ''} ${userInputRem ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}
-                        >
-                          {userInputRem || '?'}
-                        </div>
-                      </React.Fragment>
-                    )}
+
+                <div className="flex justify-center items-end gap-2 mt-8">
+                  {problem.answerType === 'integer' || problem.answerType === 'decimal' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock) ? (
+                     <div onClick={() => setFocusedInput('ans')} className={`w-32 h-24 bg-gray-100 rounded-2xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'ans' ? 'border-orange-400' : ''}`}>{userInput || '?'}</div>
+                  ) : problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper' ? (
+                     <div className="flex flex-col items-center gap-2">
+                       <div onClick={() => setFocusedInput('num')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'num' ? 'border-orange-400' : ''}`}>{userInputNum || '?'}</div>
+                       <div className="w-28 h-1.5 bg-gray-800 rounded-full"></div>
+                       <div onClick={() => setFocusedInput('den')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'den' ? 'border-orange-400' : ''}`}>{userInputDen || '?'}</div>
+                     </div>
+                  ) : problem.answerType === 'fraction_mixed' ? (
+                     <div className="flex items-center gap-3">
+                       <div onClick={() => setFocusedInput('int')} className={`w-24 h-32 bg-gray-100 rounded-xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'int' ? 'border-orange-400' : ''}`}>{userInputInt || '?'}</div>
+                       <div className="flex flex-col items-center gap-2">
+                         <div onClick={() => setFocusedInput('num')} className={`w-20 h-14 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'num' ? 'border-orange-400' : ''}`}>{userInputNum || '?'}</div>
+                         <div className="w-24 h-1.5 bg-gray-800 rounded-full"></div>
+                         <div onClick={() => setFocusedInput('den')} className={`w-20 h-14 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'den' ? 'border-orange-400' : ''}`}>{userInputDen || '?'}</div>
+                       </div>
+                     </div>
+                  ) : problem.answerType === 'length_cm' ? (
+                     <div className="flex items-center gap-2">
+                       <div onClick={() => setFocusedInput('cm')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'cm' ? 'border-orange-400' : ''}`}>{userInputCm || '?'}</div>
+                       <span className="text-2xl sm:text-4xl font-bold text-gray-800">cm</span>
+                     </div>
+                  ) : problem.answerType === 'length_mm' ? (
+                     <div className="flex items-center gap-2">
+                       <div onClick={() => setFocusedInput('mm')} className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}>{userInputMm || '?'}</div>
+                       <span className="text-2xl sm:text-4xl font-bold text-gray-800">mm</span>
+                     </div>
+                  ) : problem.answerType === 'length_cm_mm' ? (
+                     <div className="flex items-center gap-3">
+                       <div onClick={() => setFocusedInput('cm')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'cm' ? 'border-orange-400' : ''}`}>{userInputCm || '?'}</div>
+                       <span className="text-xl font-bold">cm</span>
+                       <div onClick={() => setFocusedInput('mm')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'mm' ? 'border-orange-400' : ''}`}>{userInputMm || '?'}</div>
+                       <span className="text-xl font-bold">mm</span>
+                     </div>
+                  ) : problem.answerType === 'unit_large' ? (
+                     <div className="flex items-center gap-2">
+                       <div onClick={() => setFocusedInput('unit1')} className={`w-32 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                       <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitLarge}</span>
+                     </div>
+                  ) : problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite' ? (
+                     <div className="flex items-center gap-2">
+                       <div onClick={() => setFocusedInput('unit1')} className={`w-32 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                       <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitSmall}</span>
+                     </div>
+                  ) : problem.answerType === 'unit_composite_from_small' ? (
+                     <div className="flex items-center gap-3">
+                       <div onClick={() => setFocusedInput('unit1')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                       <span className="text-xl font-bold">{problem.unitLarge}</span>
+                       <div onClick={() => setFocusedInput('unit2')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
+                       <span className="text-xl font-bold">{problem.unitSmall}</span>
+                     </div>
+                  ) : problem.answerType === 'approx_range' ? (
+                     <div className="flex items-center gap-3">
+                       <div onClick={() => setFocusedInput('approx1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'approx1' ? 'border-orange-400' : ''}`}>{userInputApprox1 || '?'}</div>
+                       <span className="text-lg font-bold">以上</span>
+                       <div onClick={() => setFocusedInput('approx2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'approx2' ? 'border-orange-400' : ''}`}>{userInputApprox2 || '?'}</div>
+                       <span className="text-lg font-bold">未満</span>
+                     </div>
+                  ) : problem.answerType === 'clock' || problem.answerType === 'clock_read' ? (
+                     <div className="flex items-center gap-3">
+                       <div onClick={() => setFocusedInput('unit1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                       <span className="text-xl font-bold">時</span>
+                       <div onClick={() => setFocusedInput('unit2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
+                       <span className="text-xl font-bold">分</span>
+                     </div>
+                  ) : problem.answerType === 'duration' ? (
+                     <div className="flex items-center gap-3">
+                       <div onClick={() => setFocusedInput('unit1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                       <span className="text-xl font-bold">時間</span>
+                       <div onClick={() => setFocusedInput('unit2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
+                       <span className="text-xl font-bold">分</span>
+                     </div>
+                  ) : null}
+
+                  {problem.rem !== undefined && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock && (
+                     <div className="flex items-center gap-2">
+                       <span className="text-2xl font-bold">あまり</span>
+                       <div onClick={() => setFocusedInput('rem')} className={`w-24 h-24 bg-gray-100 rounded-2xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'rem' ? 'border-orange-400' : ''}`}>{userInputRem || '?'}</div>
+                     </div>
+                  )}
                 </div>
 
-                {/* 正解の表示（2回以上間違えた場合） */}
                 {currentProblemMistakes >= 2 && status !== 'correct' && (
                   <div className="mt-6 p-4 bg-red-50 border-4 border-red-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
                     <span className="text-sm md:text-base font-bold text-red-800 mb-2 block">せいかいは コレだよ！ かきうつしてね！</span>
@@ -2373,7 +2336,6 @@ const QuizView = ({ type, level, course, setView, setResult }) => {
                   </div>
                 )}
 
-                {/* 式の表示（文章問題のみ） */}
                 {isWordProblem && (status === 'correct' || status === 'wrong') && problem.equation && (
                   <div className="mt-6 p-4 bg-yellow-50 border-4 border-yellow-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
                     <span className="text-sm md:text-base font-bold text-yellow-800 mb-1 block">こたえを だすための 式</span>
@@ -2448,6 +2410,7 @@ const ResultView = ({ result, type, level, setView }) => {
     number_line: { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-200', btn: 'bg-pink-500 hover:bg-pink-600 shadow-[0_6px_0_#be185d]', title: '数直線' },
     length: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', btn: 'bg-teal-500 hover:bg-teal-600 shadow-[0_6px_0_#0f766e]', title: '長さ' },
     unit: { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-200', btn: 'bg-cyan-500 hover:bg-cyan-600 shadow-[0_6px_0_#0891b2]', title: '単位' },
+    clock: { bg: 'bg-lime-50', text: 'text-lime-600', border: 'border-lime-200', btn: 'bg-lime-500 hover:bg-lime-600 shadow-[0_6px_0_#3f6212]', title: '時刻と時間' },
     word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', btn: 'bg-indigo-500 hover:bg-indigo-600 shadow-[0_6px_0_#4338ca]', title: '文章問題' }
   }[type];
 
@@ -2581,7 +2544,7 @@ const PrintView = ({ setView }) => {
 
   const unitLabels = { 
     add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数',
-    number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題' 
+    number_line: '数直線', length: '長さ', unit: '単位', clock: '時刻と時間', word_problem: '文章問題' 
   };
 
   const handlePrint = () => {
@@ -2606,7 +2569,7 @@ const PrintView = ({ setView }) => {
             </head>
             <body>
               <div style="max-width: 210mm; margin: 0 auto; color: black; padding: 20px;">
-                ${printContent}
+                \${printContent}
               </div>
               <script>
                 setTimeout(() => {
@@ -2661,7 +2624,7 @@ const PrintView = ({ setView }) => {
           </div>
         </div>
       );
-    } else if (p.answerType === 'integer' || (!p.answerType && !['長さ', '単位', '文章問題', 'がい数', '数直線'].includes(p.op))) {
+    } else if (p.answerType === 'integer' || (!p.answerType && !['長さ', '単位', '文章問題', 'がい数', '数直線', '時刻と時間'].includes(p.op))) {
       return p.rem !== undefined ? <span>{p.ans} あまり {p.rem}</span> : <span>{p.ans}</span>;
     } else if (p.answerType === 'length_cm') {
       return <span>{p.ansCm} cm</span>;
@@ -2677,6 +2640,10 @@ const PrintView = ({ setView }) => {
       return <span>{p.ans1} {p.unitLarge} {p.ans2} {p.unitSmall}</span>;
     } else if (p.answerType === 'approx_range') {
       return <span className="text-xl">{p.ans1} 以上、 {p.ans2} 未満</span>;
+    } else if (p.answerType === 'clock' || p.answerType === 'clock_read') {
+      return <span>{p.ans1} 時 {p.ans2} 分</span>;
+    } else if (p.answerType === 'duration') {
+      return <span>{p.ans1} 時間 {p.ans2} 分</span>;
     } else if (p.op === '数直線') {
       if (p.answerType === 'decimal') {
          return <span>{p.ans}</span>;
@@ -2719,7 +2686,7 @@ const PrintView = ({ setView }) => {
   return (
     <div className="min-h-screen bg-white">
       {showPrintMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-[100] font-bold text-center w-11/12 max-w-2xl animate-in fade-in slide-in-from-top-4 border-4 border-blue-400">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-[100] font-bold text-center w-11/12 max-w-2xl border-4 border-blue-400">
           <p className="text-lg md:text-xl mb-2">🖨️ 印刷画面が開かない場合</p>
           <p className="text-sm md:text-base font-normal">
             セキュリティ設定により自動で開けないことがあります。<br/>
@@ -2827,11 +2794,36 @@ const PrintView = ({ setView }) => {
                   <div className="flex items-center gap-4 flex-1 pr-8">
                     <span className="tracking-widest">
                       {p.answerType === 'unit_m' || p.answerType === 'unit_large' ? `${p.q_total_cm || p.q_total_small}${p.unitSmall || 'cm'} =` : 
-                       p.answerType === 'unit_cm' || p.answerType === 'unit_small' ? `${p.q_m || p.q_large}${p.unitLarge || 'm'} =` : 
-                       p.answerType === 'unit_cm_from_m_cm' || p.answerType === 'unit_small_from_composite' ? `${p.q_m || p.q_large}${p.unitLarge || 'm'} ${p.q_cm || p.q_small}${p.unitSmall || 'cm'} = ${m.ans1}${m.unitSmall || 'cm'}` : 
+                       p.answerType === 'unit_small' || p.answerType === 'unit_small' ? `${p.q_m || p.q_large}${p.unitLarge || 'm'} =` : 
+                       p.answerType === 'unit_cm_from_m_cm' || p.answerType === 'unit_small_from_composite' ? `${p.q_m || p.q_large}${p.unitLarge || 'm'} ${p.q_cm || p.q_small}${p.unitSmall || 'cm'} =` : 
                        `${p.q_total_cm || p.q_total_small}${p.unitSmall || 'cm'} =`}
                     </span>
-                    <div className="flex-1 border-b border-gray-400"></div>
+                    <div className="flex-1 border-b border-gray-400 h-6"></div>
+                  </div>
+                ) : p.op === '時刻と時間' ? (
+                  <div className="flex flex-col gap-4 flex-1">
+                    <span>{p.text}</span>
+                    {p.answerType === 'clock_read' ? (
+                      <ClockSVG h={p.h1} m={p.m1} size={100} />
+                    ) : (
+                      <TimeLineSVG 
+                        h1={p.h1} 
+                        m1={p.m1} 
+                        ansH={p.ans1} 
+                        ansM={p.ans2} 
+                        dm={p.dm} 
+                        dh={p.dh} 
+                        isAfter={p.isAfter} 
+                        isDuration={p.answerType === 'duration'} 
+                        h2={p.h2} 
+                        m2={p.m2} 
+                        size={80}
+                      />
+                    )}
+                    <div className="flex items-center gap-4 justify-end mt-2 pr-12">
+                      <span>答え:</span>
+                      <div className="w-40 border-b border-gray-400 h-6"></div>
+                    </div>
                   </div>
                 ) : p.op === '数直線' ? (
                   <div className="flex flex-col gap-6 flex-1">
@@ -2871,7 +2863,7 @@ const PrintView = ({ setView }) => {
                 ) : (
                   <div className="flex items-center gap-4 flex-1 pr-8">
                     <span className="tracking-widest text-2xl">{p.n1} {p.op} {p.n2} = </span>
-                    <div className="flex-1 border-b border-gray-400"></div>
+                    <div className="flex-1 border-b border-gray-400 h-6"></div>
                   </div>
                 )}
               </div>
