@@ -8,15 +8,15 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- React & ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- React & ReactDOM (UMD Production build for stable production use) -->
+  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- Babel for in-browser JSX compilation -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Babel for in-browser JSX compilation (Stable latest version) -->
+  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
 
-  <!-- Mobile Drag and Drop Polyfill -->
-  <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+  <!-- Mobile Drag and Drop Polyfill (Using highly reliable CDNJS link for HTTPS compliance on GitHub Pages) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/drag-drop-touch/1.0.8/DragDropTouch.js"></script>
 
   <style>
     body { margin: 0; padding: 0; font-family: sans-serif; }
@@ -34,7 +34,8 @@
 <body>
   <div id="root"></div>
 
-  <script type="text/babel">
+  <!-- Explicitly specify env and react presets to prevent Babel parsing issues -->
+  <script type="text/babel" data-presets="env,react">
     const { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } = React;
 
     // --- インライン作画用SVGアイコンコンポーネント ---
@@ -351,7 +352,7 @@
           else if (level === 2) { let step = [2, 5, 10, 50, 100][Math.floor(Math.random() * 5)]; let ans = start + step * missingIndex; let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; }
           else if (level === 3) { let step = [0.1, 0.2, 0.5][Math.floor(Math.random() * 3)]; let ans = Number((start + step * missingIndex).toFixed(1)); let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : Number((start + step * i).toFixed(1))); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'decimal' }; }
           else if (level === 4) { let den = [3, 4, 5, 6, 7, 8, 9, 10][Math.floor(Math.random() * 8)]; count = den + 1; if (count > 9) count = 9; if (count < 5) count = 5; missingIndex = Math.floor(Math.random() * (count - 2)) + 1; let ansNum = missingIndex; let ansDen = den; let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (i === den) return 1; return { type: 'fraction', num: i, den: den, int: 0 }; }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, labels, count, missingIndex, answerType: 'fraction_proper' }; }
-          else { let den = [3, 4, 5][Math.floor(Math.random() * 3)]; count = Math.floor(Math.random() * 3) + 7; let isMixed = Math.random() < 0.5; missingIndex = Math.floor(Math.random() * (count - 2)) + 2; let ansNum, ansDen, ansInt; if (isMixed) { ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; if (ansNum === 0) { missingIndex++; ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; } ansDen = den; } else { ansNum = missingIndex; ansDen = den; ansInt = 0; } let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (isMixed) { let intPart = Math.floor(i / den); let numPart = i % den; if (numPart === 0) return intPart; return { type: 'fraction', num: numPart, den: den, int: intPart }; } else { return { type: 'fraction', num: i, den: den, int: 0 }; } }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, ansInt, labels, count, missingIndex, answerType: isMixed ? 'fraction_mixed' : 'fraction_improper' }; }
+          else { let den = [3, 4, 5][Math.floor(Math.random() * 3)]; count = Math.floor(Math.random() * 3) + 7; let isMixed = Math.random() < 0.5; missingIndex = Math.floor(Math.random() * (count - 2)) + 2; let ansNum, ansDen, ansInt; if (isMixed) { ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; if (ansNum === 0) { missingIndex++; ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; } ansDen = den; } else { ansNum = missingIndex; ansDen = den; ansInt = 0; } let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (isMixed) { let intPart = Math.floor(i / den); let textPart = i % den; if (textPart === 0) return intPart; return { type: 'fraction', num: textPart, den: den, int: intPart }; } else { return { type: 'fraction', num: i, den: den, int: 0 }; } }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, ansInt, labels, count, missingIndex, answerType: isMixed ? 'fraction_mixed' : 'fraction_improper' }; }
         }
         case 'length': {
           let ansCm = 0, ansMm = 0, answerType = '';
@@ -993,7 +994,7 @@
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {order.map((key, index) => {
                 const buttonData = {
-                  add: { label: 'たしざん', bg: 'bg-red-400 hover:bg-red-50', shadow: 'shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', iconText: '+', iconColor: 'text-red-200 group-hover:text-red-100', iconSize: 'text-3xl' },
+                  add: { label: 'たしざん', bg: 'bg-red-400 hover:bg-red-500', shadow: 'shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', iconText: '+', iconColor: 'text-red-200 group-hover:text-red-100', iconSize: 'text-3xl' },
                   sub: { label: <span>ひき<ruby>算<rt>ざん</rt></ruby></span>, bg: 'bg-blue-400 hover:bg-blue-550', shadow: 'shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', iconText: '-', iconColor: 'text-blue-200 group-hover:text-blue-100', iconSize: 'text-4xl' },
                   mul: { label: <span>かけ<ruby>算<rt>ざん</rt></ruby></span>, bg: 'bg-green-400 hover:bg-green-500', shadow: 'shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', iconText: '×', iconColor: 'text-green-200 group-hover:text-green-100', iconSize: 'text-3xl' },
                   div: { label: <span>わり<ruby>算<rt>ざん</rt></ruby></span>, bg: 'bg-purple-400 hover:bg-purple-500', shadow: 'shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', iconText: '÷', iconColor: 'text-purple-200 group-hover:text-purple-100', iconSize: 'text-3xl' },
@@ -1444,7 +1445,7 @@
     };
 
     // ---------------------------------------------------------
-    // クイズクイズ・回答画面
+    // クイズ・回答画面
     // ---------------------------------------------------------
     const QuizView = ({ type, level, course, setView, setResult }) => {
       const [problem, setProblem] = useState({ n1: 0, n2: 0, op: '+', ans: 0, labels: [], count: 5, answerType: 'integer' });
@@ -1465,6 +1466,93 @@
       const theme = getTheme(type);
       const isNumberLine = problem.op === '数直線'; const isLength = problem.op === '長さ'; const isUnit = problem.op === '単位'; const isWordProblem = problem.op === '文章問題'; const isApprox = problem.op === 'がい数'; const isClock = problem.op === '時刻と時間';
       const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox && !isClock;
+
+      // Correct answer renderer to prevent ReferenceError when displaying answers on 2 mistakes
+      const renderCorrectAnswer = (p) => {
+        if (p.op === '文章問題') {
+          return (
+            <div className="flex flex-col gap-1 text-xl">
+              <span className="text-gray-500 font-normal text-sm">しき: {p.equation}</span>
+              <span>こたえ: {p.ans}</span>
+            </div>
+          );
+        } else if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
+          return (
+            <div className="flex flex-col items-center inline-flex align-middle text-xl">
+              <span>{p.ansNum}</span>
+              <div className="w-8 border-b-2 border-red-600 my-1"></div>
+              <span>{p.ansDen}</span>
+            </div>
+          );
+        } else if (p.answerType === 'fraction_mixed') {
+          return (
+            <div className="flex items-center inline-flex align-middle gap-1 text-xl">
+              <span>{p.ansInt}</span>
+              <div className="flex flex-col items-center">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            </div>
+          );
+        } else if (p.answerType === 'integer' || (!p.answerType && !['長さ', '単位', '文章問題', 'がい数', '数直線', '時刻と時間'].includes(p.op))) {
+          return p.rem !== undefined ? <span>{p.ans} あまり {p.rem}</span> : <span>{p.ans}</span>;
+        } else if (p.answerType === 'length_cm') {
+          return <span>{p.ansCm} cm</span>;
+        } else if (p.answerType === 'length_mm') {
+          return <span>{p.ansMm} mm</span>;
+        } else if (p.answerType === 'length_cm_mm') {
+          return <span>{p.ansCm} cm {p.ansMm} mm</span>;
+        } else if (p.answerType === 'unit_large') {
+          return <span>{p.ans1} {p.unitLarge}</span>;
+        } else if (p.answerType === 'unit_small' || p.answerType === 'unit_small_from_composite') {
+          return <span>{p.ans1} {p.unitSmall}</span>;
+        } else if (p.answerType === 'unit_composite_from_small') {
+          return <span>{p.ans1} {p.unitLarge} {p.ans2} {p.unitSmall}</span>;
+        } else if (p.answerType === 'approx_range') {
+          return <span>{p.ans1} 以上、 {p.ans2} 未満</span>;
+        } else if (p.answerType === 'clock' || p.answerType === 'clock_read') {
+          return <span>{p.ans1} 時 {p.ans2} 分</span>;
+        } else if (p.answerType === 'duration') {
+          return <span>{p.ans1} 時間 {p.ans2} 分</span>;
+        } else if (p.op === '数直線') {
+          if (p.answerType === 'decimal') {
+            return <span>{p.ans}</span>;
+          }
+          if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
+            return (
+              <div className="flex flex-col items-center inline-flex align-middle text-xl">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            );
+          } else if (p.answerType === 'fraction_mixed') {
+            if (p.ansInt > 0 && p.ansNum > 0) {
+              return (
+                <div className="flex items-center inline-flex align-middle gap-1 text-xl">
+                  <span>{p.ansInt}</span>
+                  <div className="flex flex-col items-center">
+                    <span>{p.ansNum}</span>
+                    <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                    <span>{p.ansDen}</span>
+                  </div>
+                </div>
+              );
+            }
+            if (p.ansInt > 0) return <span>{p.ansInt}</span>;
+            return (
+              <div className="flex flex-col items-center inline-flex align-middle text-xl">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            );
+          }
+          return <span>{p.ans}</span>;
+        }
+        return <span>{p.ans}</span>;
+      };
 
       const handleCheck = useCallback(() => {
         if (countdown !== null || status === 'correct') return;
@@ -2446,4 +2534,3 @@
   </script>
 </body>
 </html>
-
