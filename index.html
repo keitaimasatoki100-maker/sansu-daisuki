@@ -8,7 +8,7 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- React & ReactDOM (UMD Production build) -->
+  <!-- React & ReactDOM (UMD Production build for stable production use) -->
   <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
   
@@ -297,6 +297,23 @@
       }
       localStorage.setItem('sansu_records', JSON.stringify(records));
       return isNewRecord; 
+    };
+
+    const saveEscalationResult = (type, level, modeValue, score, timeElapsed) => {
+      const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+      if (!records[type]) records[type] = {};
+      if (!records[type][level]) records[type][level] = {};
+      
+      let key = 'esc_3min';
+      if (modeValue === 300) key = 'esc_5min';
+      if (modeValue === 0) key = 'esc_unlimited';
+
+      const currentBest = records[type][level][key];
+      if (currentBest === undefined || score > currentBest) {
+        records[type][level][key] = score;
+        if (timeElapsed) records[type][level][key + '_time'] = timeElapsed;
+      }
+      localStorage.setItem('sansu_records', JSON.stringify(records));
     };
 
     const unlockLevelByEscalation = (type, targetLevel) => {
@@ -1241,7 +1258,7 @@
 
     const LevelView = ({ type, setView, setLevel, setIsEscalation, setCourse }) => {
       const [typeRecords, setTypeRecords] = useState({});
-      const [escTimeOption, setEscTimeOption] = useState('3min'); // '3min', '5min', 'unlimited'
+      const [escTimeOption, setEscTimeOption] = useState('3min'); 
       const [startEscLv, setStartEscLv] = useState(1);
 
       useEffect(() => {
@@ -1257,10 +1274,9 @@
 
       const getLevelTotalPoints = (lv) => {
         const lvData = typeRecords[lv] || {};
-        return [
-          'count_10_points', 'count_20_points', 'count_30_points',
-          'time_60_points', 'time_120_points', 'time_180_points'
-        ].reduce((sum, key) => sum + (lvData[key] || 0), 0);
+        return Object.keys(lvData)
+          .filter(key => key.endsWith('_points'))
+          .reduce((sum, key) => sum + (lvData[key] || 0), 0);
       };
 
       const isLevelCleared = (lv) => {
@@ -1412,10 +1428,9 @@
 
       const theme = getTheme(type);
 
-      const totalPoints = [
-        'count_10_points', 'count_20_points', 'count_30_points',
-        'time_60_points', 'time_120_points', 'time_180_points'
-      ].reduce((sum, key) => sum + (records[key] || 0), 0);
+      const totalPoints = Object.keys(records)
+        .filter(key => key.endsWith('_points'))
+        .reduce((sum, key) => sum + (records[key] || 0), 0);
 
       const isCourseUnlocked = (mode, value) => {
         if (mode === 'count') {
@@ -1471,7 +1486,6 @@
       const lastActionTimeRef = useRef(Date.now());
       const [showHint, setShowHint] = useState(false);
 
-      // Escalation Mode State
       const [currentEscLevel, setCurrentEscLevel] = useState(1);
       const [streak, setStreak] = useState(0);
       const [levelUpMsg, setLevelUpMsg] = useState('');
@@ -1637,6 +1651,10 @@
           const wrongDelayTime = isWordProblem ? 3000 : 500;
           if (newMistakes >= 3) {
             isFinishedRef.current = true;
+            if (isEscalation) {
+              const finalTime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+              saveEscalationResult(type, currentEscLevel, course.value, score, finalTime);
+            }
             setTimeout(() => { setResult({ isGameOver: true, reason: 'mistakes', earnedPoints: score * (isEscalation ? currentEscLevel : level), finalEscLevel: isEscalation ? currentEscLevel : null }); setView('result'); }, wrongDelayTime);
           } else { setTimeout(() => setStatus('idle'), wrongDelayTime); }
         }
@@ -1675,6 +1693,9 @@
         if (course.mode === 'time' && timeLeft !== null && timeLeft <= 0 && !isFinishedRef.current) {
           isFinishedRef.current = true;
           const activeLevel = isEscalation ? currentEscLevel : level;
+          if (isEscalation) {
+            saveEscalationResult(type, activeLevel, course.value, score, course.value);
+          }
           if (score === 0) {
             setResult({ isGameOver: true, reason: 'timeout_zero', earnedPoints: 0, finalEscLevel: isEscalation ? currentEscLevel : null });
             setView('result');
@@ -1930,6 +1951,7 @@
                 if (isEscalation && course.mode === 'unlimited') {
                   isFinishedRef.current = true;
                   const finalTime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+                  saveEscalationResult(type, currentEscLevel, 0, score, finalTime);
                   setResult({
                     score: score,
                     timeElapsed: finalTime,
@@ -2304,10 +2326,9 @@
           if (raw[t.key]) {
             Object.keys(raw[t.key]).forEach(level => {
               const lvData = raw[t.key][level];
-              const totalPoints = [
-                'count_10_points', 'count_20_points', 'count_30_points',
-                'time_60_points', 'time_120_points', 'time_180_points'
-              ].reduce((sum, k) => sum + (lvData[k] || 0), 0);
+              const totalPoints = Object.keys(lvData)
+                .filter(k => k.endsWith('_points'))
+                .reduce((sum, k) => sum + (lvData[k] || 0), 0);
 
               if (Object.keys(lvData).length > 0) {
                 list.push({
@@ -2414,6 +2435,15 @@
                       )}
                       {item.records['time_180'] !== undefined && (
                         <div className="flex justify-between"><span>3分間コース:</span> <span className="font-bold">{item.records['time_180']} 問</span></div>
+                      )}
+                      {item.records['esc_3min'] !== undefined && (
+                        <div className="flex justify-between"><span>エスカレーション(3分):</span> <span className="font-bold">{item.records['esc_3min']} 問</span></div>
+                      )}
+                      {item.records['esc_5min'] !== undefined && (
+                        <div className="flex justify-between"><span>エスカレーション(5分):</span> <span className="font-bold">{item.records['esc_5min']} 問</span></div>
+                      )}
+                      {item.records['esc_unlimited'] !== undefined && (
+                        <div className="flex justify-between"><span>エスカレーション(無制限):</span> <span className="font-bold">{item.records['esc_unlimited']} 問 {item.records['esc_unlimited_time'] ? `(${formatTime(item.records['esc_unlimited_time'])})` : ''}</span></div>
                       )}
                     </div>
                   </div>
@@ -2536,7 +2566,7 @@
               '<style>body { font-family: sans-serif; background-color: white; } @media print { @page { margin: 10mm; } .page-break { page-break-before: always; } } .page-break { page-break-before: always; } </style>' +
               '</head><body><div style="max-width: 210mm; margin: 0 auto; color: black; padding: 20px;">' +
               printContent +
-              '</div><' + 'script>' +
+              '</div><script>' +
               'setTimeout(() => { window.print(); window.close(); }, 1000);' +
               '<' + '/script></body></html>'
             );
