@@ -8,18 +8,18 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- React & ReactDOM (UMD Production build for stable production use) -->
+  <!-- React & ReactDOM (UMD Production build) -->
   <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- Babel for in-browser JSX compilation (Stable latest version) -->
+  <!-- Babel for in-browser JSX compilation -->
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
 
-  <!-- Mobile Drag and Drop Polyfill (Using highly reliable CDNJS link for HTTPS compliance on GitHub Pages) -->
+  <!-- Mobile Drag and Drop Polyfill -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/drag-drop-touch/1.0.8/DragDropTouch.js"></script>
 
   <style>
-    body { margin: 0; padding: 0; font-family: sans-serif; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     @media print {
@@ -34,11 +34,9 @@
 <body>
   <div id="root"></div>
 
-  <!-- Explicitly specify env and react presets to prevent Babel parsing issues -->
   <script type="text/babel" data-presets="env,react">
     const { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } = React;
 
-    // --- インライン作画用SVGアイコンコンポーネント ---
     const Star = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>);
     const ArrowLeft = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>);
     const Circle = ({ className, strokeWidth }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth || 2} strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/></svg>);
@@ -47,7 +45,6 @@
     const Undo = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>);
     const Heart = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>);
 
-    // ピンポン音
     const playCorrectSound = () => {
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -67,7 +64,6 @@
       } catch (e) { console.log('Audio error:', e); }
     };
 
-    // 紙吹雪
     const Confetti = () => {
       const colors = ['#f87171', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa'];
       const pieces = Array.from({ length: 60 }).map((_, i) => ({
@@ -82,7 +78,6 @@
       );
     };
 
-    // くす玉
     const Kusudama = ({ onClick }) => (
       <div className="fixed inset-0 z-[100] flex items-center justify-center animate-in fade-in duration-500 cursor-pointer pointer-events-auto" onClick={onClick}>
         <Confetti />
@@ -103,7 +98,6 @@
       </div>
     );
 
-    // 時計の文字盤SVG描画
     const ClockSVG = ({ h, m, size = 160 }) => {
       const hourAngle = (h % 12) * 30 + m * 0.5;
       const minuteAngle = m * 6;
@@ -120,16 +114,13 @@
             const angle = i * 6 * (Math.PI / 180);
             return <line key={i} x1={50 + 44 * Math.sin(angle)} y1={50 - 44 * Math.cos(angle)} x2={50 + 47 * Math.sin(angle)} y2={50 - 47 * Math.cos(angle)} stroke="#9ca3af" strokeWidth="1" />
           })}
-          {/* 短針 */}
           <line x1="50" y1="50" x2={50 + 23 * Math.sin(hourAngle * Math.PI / 180)} y2={50 - 23 * Math.cos(hourAngle * Math.PI / 180)} stroke="#ef4444" strokeWidth="4" strokeLinecap="round" />
-          {/* 長針 */}
           <line x1="50" y1="50" x2={50 + 40 * Math.sin(minuteAngle * Math.PI / 180)} y2={50 - 40 * Math.cos(minuteAngle * Math.PI / 180)} stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
           <circle cx="50" cy="50" r="3" fill="#374151" />
         </svg>
       );
     };
 
-    // 時間の数直線 (SVGタイムライン)
     const TimeLineSVG = ({ h1, m1, ansH, ansM, dm, dh, isAfter, isDuration, h2, m2, size = 100 }) => {
       let startHour = h1;
       if (!isAfter && !isDuration) {
@@ -166,10 +157,7 @@
 
       return (
         <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="mx-auto my-2 overflow-visible bg-white rounded-xl p-2 border shadow-sm max-w-lg">
-          {/* メインの数直線軸 */}
           <line x1={padX - 25} y1="60" x2={width - padX + 25} y2="60" stroke="#4b5563" strokeWidth="3" strokeLinecap="round" />
-          
-          {/* 目盛り刻み */}
           {ticks.map((t, idx) => (
             <g key={idx}>
               <line x1={t.x} y1={t.isMajor ? "48" : "54"} x2={t.x} y2="66" stroke="#4b5563" strokeWidth={t.isMajor ? "2.5" : "1"} />
@@ -179,15 +167,12 @@
             </g>
           ))}
 
-          {/* 時間計算のガイド表示 */}
           {isDuration ? (
             <g>
               <circle cx={x1} cy="60" r="5" fill="#3b82f6" />
               <text x={x1} y="32" textAnchor="middle" fontSize="12" fill="#3b82f6" fontWeight="bold">{h1}:{m1.toString().padStart(2, '0')}</text>
-              
               <circle cx={x2} cy="60" r="5" fill="#10b981" />
               <text x={x2} y="32" textAnchor="middle" fontSize="12" fill="#10b981" fontWeight="bold">{h2}:{m2.toString().padStart(2, '0')}</text>
-              
               <path d={`M ${x1},50 Q ${(x1 + x2)/2},20 ${x2},50`} fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray="4" />
               <text x={(x1 + x2)/2} y="15" textAnchor="middle" fontSize="14" fill="#f59e0b" fontWeight="bold">？ 時間 ？ 分</text>
             </g>
@@ -195,7 +180,6 @@
             <g>
               <circle cx={x1} cy="60" r="5" fill="#3b82f6" />
               <text x={x1} y="32" textAnchor="middle" fontSize="12" fill="#3b82f6" fontWeight="bold">{h1}時{m1}分</text>
-              
               <path d={isAfter ? `M ${x1},50 Q ${(x1 + x2)/2},32 ${x2 - 5},46` : `M ${x1},50 Q ${(x1 + x2)/2},32 ${x2 + 5},46`} fill="none" stroke="#ef4444" strokeWidth="3" />
               {isAfter ? (
                 <polygon points={`${x2},48 ${x2-8},38 ${x2-4},50`} fill="#ef4444" />
@@ -205,7 +189,6 @@
               <text x={(x1 + x2)/2} y="24" textAnchor="middle" fontSize="12" fill="#ef4444" fontWeight="bold">
                 {dh > 0 ? `${dh}時間` : ''}{dm}分{isAfter ? '後' : '前'}
               </text>
-              
               <circle cx={x2} cy="60" r="5" fill="#ef4444" />
               <text x={x2} y="32" textAnchor="middle" fontSize="15" fill="#ef4444" fontWeight="bold">？</text>
             </g>
@@ -214,7 +197,84 @@
       );
     };
 
-    // 記録保存関数
+    const NumberLineSVG = ({ labels, count }) => {
+      return (
+        <svg width="100%" height="140" viewBox="0 0 1000 140" className="mx-auto my-4 overflow-visible max-w-xl">
+          <line x1="40" y1="50" x2="960" y2="50" stroke="#374151" strokeWidth="4" strokeLinecap="round" />
+          <polygon points="960,42 980,50 960,58" fill="#374151" />
+          {labels && labels.map((label, j) => {
+            const x = 80 + (840 / (count - 1)) * j;
+            return (
+              <g key={j}>
+                <line x1={x} y1="35" x2={x} y2="65" stroke="#374151" strokeWidth="3" strokeLinecap="round" />
+                {typeof label === 'object' ? (
+                  label.int > 0 ? (
+                    <g>
+                      <text x={x - 18} y="100" textAnchor="middle" fontSize="26" fontWeight="bold" fill="#1f2937">{label.int}</text>
+                      <text x={x + 12} y="88" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#1f2937">{label.num}</text>
+                      <line x1={x} y1="94" x2={x + 24} y2="94" stroke="#1f2937" strokeWidth="2" />
+                      <text x={x + 12} y="114" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#1f2937">{label.den}</text>
+                    </g>
+                  ) : (
+                    <g>
+                      <text x={x} y="88" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#1f2937">{label.num}</text>
+                      <line x1={x - 12} y1="94" x2={x + 12} y2="94" stroke="#1f2937" strokeWidth="2" />
+                      <text x={x} y="114" textAnchor="middle" fontSize="20" fontWeight="bold" fill="#1f2937">{label.den}</text>
+                    </g>
+                  )
+                ) : (
+                  <text x={x} y="100" textAnchor="middle" fontSize={label === '?' ? "36" : "26"} fontWeight="bold" fill={label === '?' ? "#ef4444" : "#1f2937"}>
+                    {label === '?' ? '？' : label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      );
+    };
+
+    const RulerSVG = ({ totalMm, maxCm }) => {
+      const width = 800; 
+      const height = 160;
+      const padding = 40;
+      const usableWidth = width - padding * 2;
+      const mmWidth = usableWidth / (maxCm * 10);
+      
+      return (
+        <div className="flex flex-col items-center my-4 w-full">
+          <svg width="100%" height="160" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+            <rect x={padding - 15} y="60" width={usableWidth + 30} height="70" fill="#fef3c7" stroke="#d97706" strokeWidth="3" rx="6" />
+            
+            {Array.from({length: maxCm * 10 + 1}).map((_, i) => {
+              const x = padding + i * mmWidth;
+              const isCm = i % 10 === 0;
+              const isHalf = i % 5 === 0 && !isCm;
+              const lineY = 60;
+              const lineHeight = isCm ? 35 : isHalf ? 25 : 15;
+              return (
+                <g key={i}>
+                  <line x1={x} y1={lineY} x2={x} y2={lineY + lineHeight} stroke="#92400e" strokeWidth={isCm ? 3 : isHalf ? 2 : 1.5} />
+                  {isCm && (
+                    <text x={x} y="115" textAnchor="middle" fontSize="22" fontWeight="bold" fill="#92400e">
+                      {i / 10}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            
+            <g transform={`translate(${padding + totalMm * mmWidth}, 35)`}>
+              <polygon points="-12,0 12,0 0,25" fill="#ef4444" />
+              <line x1="0" y1="-25" x2="0" y2="0" stroke="#ef4444" strokeWidth="6" strokeLinecap="round" />
+            </g>
+            <rect x={padding} y="40" width={totalMm * mmWidth} height="12" fill="#ef4444" opacity="0.6" />
+          </svg>
+          <span className="text-sm font-bold text-blue-600 mt-1">あおい ぼうの 長さは 何cm 何mm ですか？</span>
+        </div>
+      );
+    };
+
     const saveRecord = (type, level, mode, value, resultValue) => {
       const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
       if (!records[type]) records[type] = {};
@@ -222,7 +282,6 @@
       
       const key = `${mode}_${value}`;
       const currentBest = records[type][level][key];
-      
       let isNewRecord = false;
 
       if (mode === 'count') {
@@ -240,7 +299,26 @@
       return isNewRecord; 
     };
 
-    // 全コース制覇ボーナスのチェックと適用関数
+    const unlockLevelByEscalation = (type, targetLevel) => {
+      const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+      if (!records[type]) records[type] = {};
+      if (!records[type][targetLevel]) records[type][targetLevel] = {};
+      records[type][targetLevel].unlocked = true;
+      localStorage.setItem('sansu_records', JSON.stringify(records));
+    };
+
+    const getLastEscalationLevel = (type) => {
+      const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+      return records[type]?.last_esc_level || 1;
+    };
+
+    const saveEscalationLevel = (type, level) => {
+      const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+      if (!records[type]) records[type] = {};
+      records[type].last_esc_level = level;
+      localStorage.setItem('sansu_records', JSON.stringify(records));
+    };
+
     const checkAndApplyAllClearBonus = (type, level) => {
       const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
       if (!records[type] || !records[type][level]) return 0;
@@ -259,7 +337,6 @@
       return 0;
     };
 
-    // ポイント加算関数
     const addPoints = (type, level, mode, value, pointsToAdd) => {
       const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
       if (!records[type]) records[type] = {};
@@ -272,7 +349,6 @@
       localStorage.setItem('sansu_records', JSON.stringify(records));
     };
 
-    // まちがえた問題を保存する関数
     const saveMistake = (type, problem) => {
       const mistakes = JSON.parse(localStorage.getItem('sansu_mistakes') || '{}');
       if (!mistakes[type]) mistakes[type] = {};
@@ -315,7 +391,6 @@
       localStorage.setItem('sansu_mistakes', JSON.stringify(mistakes));
     };
 
-    // 1問分の問題生成関数
     const generateSingleProblemLocal = (type, level) => {
       let n1, n2, ans;
       switch (type) {
@@ -347,12 +422,67 @@
           else if (level === 4) { n2 = Math.floor(Math.random() * 89) + 11; let rem = Math.floor(Math.random() * (n2 - 1)) + 1; let maxAns = Math.floor((99 - rem) / n2); if (maxAns < 1) { n2 = Math.floor(Math.random() * 40) + 11; rem = Math.floor(Math.random() * (n2 - 1)) + 1; maxAns = Math.floor((99 - rem) / n2); } ans = Math.floor(Math.random() * Math.max(1, maxAns)) + 1; n1 = n2 * ans + rem; return { n1, n2, op: '÷', ans, rem }; }
           else { n2 = Math.floor(Math.random() * 89) + 11; const rem = Math.floor(Math.random() * (n2 - 1)) + 1; const minAns = Math.ceil((100 - rem) / n2); const maxAns = Math.floor((999 - rem) / n2); if (maxAns >= minAns) { ans = Math.floor(Math.random() * (maxAns - minAns + 1)) + minAns; } else { ans = minAns; } n1 = n2 * ans + rem; return { n1, n2, op: '÷', ans, rem }; }
         case 'number_line': {
-          let start = 0; let count = Math.floor(Math.random() * 4) + 6; let missingIndex = Math.floor(Math.random() * (count - 1)) + 1;
-          if (level === 1) { let step = 1; let ans = start + step * missingIndex; let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; }
-          else if (level === 2) { let step = [2, 5, 10, 50, 100][Math.floor(Math.random() * 5)]; let ans = start + step * missingIndex; let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; }
-          else if (level === 3) { let step = [0.1, 0.2, 0.5][Math.floor(Math.random() * 3)]; let ans = Number((start + step * missingIndex).toFixed(1)); let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : Number((start + step * i).toFixed(1))); return { n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'decimal' }; }
-          else if (level === 4) { let den = [3, 4, 5, 6, 7, 8, 9, 10][Math.floor(Math.random() * 8)]; count = den + 1; if (count > 9) count = 9; if (count < 5) count = 5; missingIndex = Math.floor(Math.random() * (count - 2)) + 1; let ansNum = missingIndex; let ansDen = den; let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (i === den) return 1; return { type: 'fraction', num: i, den: den, int: 0 }; }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, labels, count, missingIndex, answerType: 'fraction_proper' }; }
-          else { let den = [3, 4, 5][Math.floor(Math.random() * 3)]; count = Math.floor(Math.random() * 3) + 7; let isMixed = Math.random() < 0.5; missingIndex = Math.floor(Math.random() * (count - 2)) + 2; let ansNum, ansDen, ansInt; if (isMixed) { ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; if (ansNum === 0) { missingIndex++; ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; } ansDen = den; } else { ansNum = missingIndex; ansDen = den; ansInt = 0; } let labels = Array.from({length: count}).map((_, i) => { if (i === missingIndex) return '?'; if (i === 0) return 0; if (isMixed) { let intPart = Math.floor(i / den); let textPart = i % den; if (textPart === 0) return intPart; return { type: 'fraction', num: textPart, den: den, int: intPart }; } else { return { type: 'fraction', num: i, den: den, int: 0 }; } }); return { n1: start, n2: 1/den, op: '数直線', ansNum, ansDen, ansInt, labels, count, missingIndex, answerType: isMixed ? 'fraction_mixed' : 'fraction_improper' }; }
+          let text = '？にあてはまる 数を こたえましょう。';
+          let count = Math.floor(Math.random() * 3) + 6;
+          let missingIndex = Math.floor(Math.random() * (count - 1)) + 1;
+          if (level === 1) { 
+            let start = Math.floor(Math.random() * 10);
+            let step = 1; let ans = start + step * missingIndex; 
+            let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); 
+            return { text, n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; 
+          }
+          else if (level === 2) { 
+            let step = [2, 5, 10, 50, 100][Math.floor(Math.random() * 5)]; 
+            let start = Math.floor(Math.random() * 5) * step; 
+            let ans = start + step * missingIndex; 
+            let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : start + step * i); 
+            return { text, n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'integer' }; 
+          }
+          else if (level === 3) { 
+            let step = [0.1, 0.2, 0.5][Math.floor(Math.random() * 3)]; 
+            let start = Number((Math.floor(Math.random() * 5) * step).toFixed(1)); 
+            let ans = Number((start + step * missingIndex).toFixed(1)); 
+            let labels = Array.from({length: count}).map((_, i) => i === missingIndex ? '?' : Number((start + step * i).toFixed(1))); 
+            return { text, n1: start, n2: step, op: '数直線', ans, labels, count, missingIndex, answerType: 'decimal' }; 
+          }
+          else if (level === 4) { 
+            let den = [3, 4, 5, 6, 7, 8][Math.floor(Math.random() * 6)]; 
+            count = den + 1; missingIndex = Math.floor(Math.random() * (count - 2)) + 1; 
+            let ansNum = missingIndex; let ansDen = den; 
+            let labels = Array.from({length: count}).map((_, i) => { 
+              if (i === missingIndex) return '?'; 
+              if (i === 0) return 0; 
+              if (i === den) return 1; 
+              return { type: 'fraction', num: i, den: den, int: 0 }; 
+            }); 
+            return { text, n1: 0, n2: 1/den, op: '数直線', ansNum, ansDen, labels, count, missingIndex, answerType: 'fraction_proper' }; 
+          }
+          else { 
+            let den = [3, 4, 5][Math.floor(Math.random() * 3)]; 
+            count = den * 2 + 1; if (count > 9) count = 9; 
+            let isMixed = Math.random() < 0.5; 
+            missingIndex = Math.floor(Math.random() * (count - 2)) + 1; 
+            let ansNum, ansDen, ansInt; 
+            if (isMixed) { 
+              ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; 
+              if (ansNum === 0) { 
+                if (missingIndex + 1 < count) missingIndex++; else if (missingIndex - 1 > 0) missingIndex--; 
+                ansInt = Math.floor(missingIndex / den); ansNum = missingIndex % den; 
+              } 
+              ansDen = den; 
+            } else { 
+              ansNum = missingIndex; ansDen = den; ansInt = 0; 
+            } 
+            let labels = Array.from({length: count}).map((_, i) => { 
+              if (i === missingIndex) return '?'; 
+              if (i === 0) return 0; 
+              let intPart = Math.floor(i / den); let textPart = i % den;
+              if (textPart === 0) return intPart;
+              if (isMixed) return { type: 'fraction', num: textPart, den: den, int: intPart }; 
+              else return { type: 'fraction', num: i, den: den, int: 0 }; 
+            }); 
+            return { text, n1: 0, n2: 1/den, op: '数直線', ansNum, ansDen, ansInt, labels, count, missingIndex, answerType: isMixed ? 'fraction_mixed' : 'fraction_improper' }; 
+          }
         }
         case 'length': {
           let ansCm = 0, ansMm = 0, answerType = '';
@@ -375,17 +505,38 @@
           else if (level === 4) { m_val = Math.floor(Math.random() * 11) + 10; cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; }
           else { m_val = Math.floor(Math.random() * 80) + 20; cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; }
 
+          let text = '';
           if (isDecimalProblem) {
              allowDecimal = true; let dec = Math.floor(Math.random() * 9) + 1; let decimalVal = m_val + dec / 10; 
-             if (pattern === 1) { ans1 = decimalVal; q_total_small = Math.round(decimalVal * multiplier); answerType = 'unit_large'; }
-             else { q_large = decimalVal; ans1 = Math.round(decimalVal * multiplier); answerType = 'unit_small'; }
+             if (pattern === 1) { 
+               ans1 = decimalVal; q_total_small = Math.round(decimalVal * multiplier); answerType = 'unit_large'; 
+               text = `${q_total_small} ${unitSmall} は 何${unitLarge} ですか？`;
+             }
+             else { 
+               q_large = decimalVal; ans1 = Math.round(decimalVal * multiplier); answerType = 'unit_small'; 
+               text = `${q_large} ${unitLarge} は 何${unitSmall} ですか？`;
+             }
           } else {
-            if (pattern === 1) { ans1 = m_val; q_total_small = ans1 * multiplier; answerType = 'unit_large'; }
-            else if (pattern === 2) { q_large = m_val; ans1 = q_large * multiplier; answerType = 'unit_small'; }
-            else if (pattern === 3) { if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; q_large = m_val; q_small = cm_val; ans1 = q_large * multiplier + q_small; answerType = 'unit_small_from_composite'; }
-            else if (pattern === 4) { if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; ans1 = m_val; ans2 = cm_val; q_total_small = ans1 * multiplier + ans2; answerType = 'unit_composite_from_small'; }
+            if (pattern === 1) { 
+              ans1 = m_val; q_total_small = ans1 * multiplier; answerType = 'unit_large'; 
+              text = `${q_total_small} ${unitSmall} は 何${unitLarge} ですか？`;
+            }
+            else if (pattern === 2) { 
+              q_large = m_val; ans1 = q_large * multiplier; answerType = 'unit_small'; 
+              text = `${q_large} ${unitLarge} は 何${unitSmall} ですか？`;
+            }
+            else if (pattern === 3) { 
+              if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; 
+              q_large = m_val; q_small = cm_val; ans1 = q_large * multiplier + q_small; answerType = 'unit_small_from_composite'; 
+              text = `${q_large} ${unitLarge} ${q_small} ${unitSmall} は 何${unitSmall} ですか？`;
+            }
+            else if (pattern === 4) { 
+              if (cm_val === 0) cm_val = Math.floor(Math.random() * (multiplier - 1)) + 1; 
+              ans1 = m_val; ans2 = cm_val; q_total_small = ans1 * multiplier + ans2; answerType = 'unit_composite_from_small'; 
+              text = `${q_total_small} ${unitSmall} は 何${unitLarge} 何${unitSmall} ですか？`;
+            }
           }
-          return { op: '単位', answerType, unitType, unitLarge, unitSmall, q_large, q_small, q_total_small, ans1, ans2, allowDecimal, n1: q_total_small || q_large, n2: q_small || 0, ans: ans1 };
+          return { op: '単位', text, answerType, unitType, unitLarge, unitSmall, q_large, q_small, q_total_small, ans1, ans2, allowDecimal, n1: q_total_small || q_large, n2: q_small || 0, ans: ans1 };
         }
         case 'clock': {
           let h1, m1, h2, m2, dh, dm, text='', answerType='clock';
@@ -482,7 +633,7 @@
           };
 
           if (actualLevel === 1) {
-            const digits = Math.floor(Math.random() * 3) + 3; // 3, 4, 5
+            const digits = Math.floor(Math.random() * 3) + 3;
             n1 = getNum(digits);
             if (digits === 3) {
               ans = Math.round(n1 / 100) * 100;
@@ -495,8 +646,8 @@
               text = `${n1}の 千の位を 四捨五入して、\n約何万と あらわしましょう。`;
             }
           } else if (actualLevel === 2) {
-            const targetDigit = Math.floor(Math.random() * 3) + 1; // 1:十の位, 2:百の位, 3:千の位まで
-            let digits = targetDigit + Math.floor(Math.random() * 2) + 1; // 桁数は目標より上
+            const targetDigit = Math.floor(Math.random() * 3) + 1;
+            let digits = targetDigit + Math.floor(Math.random() * 2) + 1;
             if (digits > 5) digits = 5;
             n1 = getNum(digits);
             const power = Math.pow(10, targetDigit);
@@ -504,7 +655,7 @@
             const placeName = targetDigit === 1 ? '十' : targetDigit === 2 ? '百' : '千';
             text = `四捨五入して、\n${placeName}の位までの がい数に しましょう。\n\n${n1}`;
           } else if (actualLevel === 3) {
-            const digits = Math.floor(Math.random() * 3) + 3; // 3, 4, 5
+            const digits = Math.floor(Math.random() * 3) + 3;
             n1 = getNum(digits);
             const power = Math.pow(10, digits - 2);
             ans = Math.round(n1 / power) * power;
@@ -542,9 +693,6 @@
       return newProblem;
     };
 
-    // ---------------------------------------------------------
-    // 背景罫線コンポーネント
-    // ---------------------------------------------------------
     const GridBackground = () => (
       <div className="absolute inset-0 pointer-events-none flex justify-end pr-2 sm:pr-4 md:pr-12 z-0">
         <div className="flex h-full border-r-2 border-amber-700/15">
@@ -555,9 +703,6 @@
       </div>
     );
 
-    // ---------------------------------------------------------
-    // 筆算（縦式）コンポーネント
-    // ---------------------------------------------------------
     const VerticalMath = ({ problem }) => {
       const { n1, n2, op } = problem;
       
@@ -644,53 +789,6 @@
       );
     };
 
-    // ---------------------------------------------------------
-    // 定規描画コンポーネント
-    // ---------------------------------------------------------
-    const RulerSVG = ({ totalMm, maxCm }) => {
-      const width = 800; 
-      const height = 160;
-      const padding = 40;
-      const usableWidth = width - padding * 2;
-      const mmWidth = usableWidth / (maxCm * 10);
-      
-      return (
-        <div className="flex flex-col items-center my-4 w-full">
-          <svg width="100%" height="160" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-            <rect x={padding - 15} y="60" width={usableWidth + 30} height="70" fill="#fef3c7" stroke="#d97706" strokeWidth="3" rx="6" />
-            
-            {Array.from({length: maxCm * 10 + 1}).map((_, i) => {
-              const x = padding + i * mmWidth;
-              const isCm = i % 10 === 0;
-              const isHalf = i % 5 === 0 && !isCm;
-              const lineY = 60;
-              const lineHeight = isCm ? 35 : isHalf ? 25 : 15;
-              return (
-                <g key={i}>
-                  <line x1={x} y1={lineY} x2={x} y2={lineY + lineHeight} stroke="#92400e" strokeWidth={isCm ? 3 : isHalf ? 2 : 1.5} />
-                  {isCm && (
-                    <text x={x} y="115" textAnchor="middle" fontSize="22" fontWeight="bold" fill="#92400e">
-                      {i / 10}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-            
-            <g transform={`translate(${padding + totalMm * mmWidth}, 35)`}>
-              <polygon points="-12,0 12,0 0,25" fill="#ef4444" />
-              <line x1="0" y1="-25" x2="0" y2="0" stroke="#ef4444" strokeWidth="6" strokeLinecap="round" />
-            </g>
-            <rect x={padding} y="40" width={totalMm * mmWidth} height="12" fill="#ef4444" opacity="0.6" />
-          </svg>
-          <span className="text-sm font-bold text-blue-600 mt-1">あおい ぼうの 長さは 何cm 何mm ですか？</span>
-        </div>
-      );
-    };
-
-    // ---------------------------------------------------------
-    // 手書きキャンバスコンポーネント
-    // ---------------------------------------------------------
     const DrawCanvas = forwardRef(({ clearKey }, ref) => {
       const canvasRef = useRef(null);
       const isDrawing = useRef(false);
@@ -822,7 +920,6 @@
       word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', textL: 'text-indigo-500', border: 'border-indigo-200', btn: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:translate-y-[6px]', btnC: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca]', btnT: 'bg-violet-400 hover:bg-violet-500 shadow-[0_6px_0_#5b21b6]', title: '文章問題' }
     }[type] || {});
 
-    // --- 画面コンポーネント ---
     const HomeView = ({ setType, setView }) => {
       const [typePoints, setTypePoints] = useState({ add:0, sub:0, mul:0, div:0, number_line:0, length:0, unit:0, word_problem:0, approx:0, clock:0 });
       const [order, setOrder] = useState(() => {
@@ -844,9 +941,10 @@
         }
         return defaultOrder;
       });
-      const [motivationalMessage, setMotivationalMessage] = useState('');
       const [dailyComment, setDailyComment] = useState('');
       const [unlockedMessages, setUnlockedMessages] = useState([]);
+      const [isDrumrolling, setIsDrumrolling] = useState(false);
+      const [drumrollCandidate, setDrumrollCandidate] = useState('');
       const dragItem = useRef(null); const dragNode = useRef(null);
 
       useEffect(() => { localStorage.setItem('sansu_button_order_v2', JSON.stringify(order)); }, [order]);
@@ -854,8 +952,7 @@
       useEffect(() => {
         const records = JSON.parse(localStorage.getItem('sansu_records') || '{}');
         const calcTypeTotal = (k) => Object.values(records[k]||{}).reduce((sum, lv) => sum + Object.keys(lv).filter(key=>key.endsWith('_points')).reduce((s, key)=>s+lv[key],0), 0);
-        setTypePoints({ add:calcTypeTotal('add'), sub:calcTypeTotal('sub'), mul:calcTypeTotal('mul'), div:calcTypeTotal('div'), approx:calcTypeTotal('approx'), number_line:calcTypeTotal('number_line'), length:calcTypeTotal('length'), unit:calcTypeTotal('unit'), word_problem:calcTypeTotal('word_problem'), clock:calcTypeTotal('clock') });
-
+        
         const today = new Date();
         const todayStr = today.toDateString();
         const yesterday = new Date();
@@ -943,6 +1040,59 @@
         return totalAllPoints >= unlockConditions[key];
       };
 
+      const playDrumrollSound = () => {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220 + Math.random() * 250, ctx.currentTime);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.08);
+        } catch(e){}
+      };
+
+      const handleOmakase = () => {
+        const playableKeys = ['add', 'sub', 'mul', 'div', 'approx', 'number_line', 'length', 'unit', 'clock', 'word_problem'].filter(k => isUnlocked(k));
+        if (playableKeys.length === 0) return;
+
+        const keyLabels = {
+          add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算',
+          approx: 'がい数', number_line: '数直線', length: '長さ',
+          unit: '単位', clock: '時刻と時間', word_problem: '文章問題'
+        };
+
+        setIsDrumrolling(true);
+        let count = 0;
+        const maxShuffle = 18;
+        const interval = setInterval(() => {
+          const randKey = playableKeys[Math.floor(Math.random() * playableKeys.length)];
+          setDrumrollCandidate(keyLabels[randKey] || '');
+          playDrumrollSound();
+          count++;
+
+          if (count >= maxShuffle) {
+            clearInterval(interval);
+            const finalKey = playableKeys[Math.floor(Math.random() * playableKeys.length)];
+            setDrumrollCandidate(keyLabels[finalKey] || '');
+            
+            playCorrectSound();
+
+            setTimeout(() => {
+              setIsDrumrolling(false);
+              setType(finalKey);
+              setView('level');
+            }, 600);
+          }
+        }, 80);
+      };
+
       return (
         <div className="relative flex flex-col items-center justify-center min-h-screen bg-amber-50 p-6 print:hidden">
           <button 
@@ -988,6 +1138,28 @@
                     {msg}
                   </div>
                 ))}
+              </div>
+            )}
+
+            <div className="mb-6 flex justify-center">
+              <button
+                onClick={handleOmakase}
+                disabled={isDrumrolling}
+                className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-extrabold py-2.5 px-6 rounded-2xl shadow-[0_4px_0_#4c1d95] active:shadow-[0_0px_0_#4c1d95] active:translate-y-[4px] transition-all flex items-center gap-2 text-lg border-2 border-purple-200 cursor-pointer"
+              >
+                <span>🎲</span> <span>おまかせ</span>
+              </button>
+            </div>
+
+            {isDrumrolling && (
+              <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-xs w-full mx-4 text-center border-4 border-purple-300 flex flex-col items-center gap-4 animate-in zoom-in duration-300">
+                  <div className="text-4xl animate-bounce">🎲</div>
+                  <div className="text-gray-600 font-bold text-lg">どれになるかな...？</div>
+                  <div className="text-2xl font-black text-purple-700 bg-purple-100 px-6 py-3 rounded-2xl border-2 border-purple-300 min-w-[180px] h-14 flex items-center justify-center shadow-inner">
+                    {drumrollCandidate}
+                  </div>
+                </div>
               </div>
             )}
             
@@ -1067,9 +1239,1045 @@
       );
     };
 
-    // ---------------------------------------------------------
-    // 記録一覧画面
-    // ---------------------------------------------------------
+    const LevelView = ({ type, setView, setLevel, setIsEscalation, setCourse }) => {
+      const [typeRecords, setTypeRecords] = useState({});
+      const [escTimeOption, setEscTimeOption] = useState('3min'); // '3min', '5min', 'unlimited'
+      const [startEscLv, setStartEscLv] = useState(1);
+
+      useEffect(() => {
+        const loadedRecords = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+        setTypeRecords(loadedRecords[type] || {});
+        setStartEscLv(getLastEscalationLevel(type));
+      }, [type]);
+
+      const resetEscalationLevel = () => {
+        saveEscalationLevel(type, 1);
+        setStartEscLv(1);
+      };
+
+      const getLevelTotalPoints = (lv) => {
+        const lvData = typeRecords[lv] || {};
+        return [
+          'count_10_points', 'count_20_points', 'count_30_points',
+          'time_60_points', 'time_120_points', 'time_180_points'
+        ].reduce((sum, key) => sum + (lvData[key] || 0), 0);
+      };
+
+      const isLevelCleared = (lv) => {
+        const lvData = typeRecords[lv] || {};
+        const requiredKeys = ['count_10', 'count_20', 'count_30', 'time_60', 'time_120', 'time_180'];
+        return requiredKeys.every(key => lvData[key] !== undefined);
+      };
+
+      const isLevelUnlocked = (lv) => {
+        if (type === 'clock') return true;
+        if (lv === 1 || lv === 2) return true;
+        const lvData = typeRecords[lv] || {};
+        if (lvData.unlocked) return true;
+        if (lv === 3) return isLevelCleared(2);
+        if (lv === 4) return isLevelCleared(3);
+        if (lv === 5) return isLevelCleared(4);
+        return false;
+      };
+
+      const theme = getTheme(type);
+
+      const startEscalation = () => {
+        setIsEscalation(true);
+        const initialLv = getLastEscalationLevel(type);
+        setLevel(initialLv);
+        saveEscalationLevel(type, initialLv);
+        let courseSetting = { mode: 'time', value: 180 };
+        if (escTimeOption === '5min') courseSetting = { mode: 'time', value: 300 };
+        if (escTimeOption === 'unlimited') courseSetting = { mode: 'unlimited', value: 0 };
+        setCourse(courseSetting);
+        setView('quiz');
+      };
+
+      return (
+        <div className={`flex flex-col items-center justify-center min-h-screen ${theme.bg} p-6`}>
+          <div className={`bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 ${theme.border}`}>
+            <div className="flex justify-between items-center mb-6">
+              <button 
+                onClick={() => setView('home')}
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 inline-block" /> もどる
+              </button>
+              <h2 className={`text-2xl md:text-3xl font-extrabold ${theme.text} pr-8`}>
+                {theme.title} - レベル
+              </h2>
+            </div>
+            <div className="flex flex-col gap-4">
+              {(type === 'add' || type === 'sub' || type === 'mul' || type === 'div') && (
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-3xl border-2 border-amber-300 flex flex-col gap-3 shadow-sm">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-base font-extrabold text-amber-800 flex items-center gap-1">
+                      🚀 エスカレーション問題の じかん設定
+                    </span>
+                    <span className="text-xs font-bold text-amber-600">
+                      （この設定は エスカレーション問題だけに 適用されます）
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 bg-amber-200/60 p-1.5 rounded-2xl">
+                    <button
+                      onClick={() => setEscTimeOption('3min')}
+                      className={`py-2 px-1 rounded-xl font-extrabold text-sm transition-all ${
+                        escTimeOption === '3min'
+                          ? 'bg-amber-500 text-white shadow-md scale-[1.02]'
+                          : 'text-amber-900 hover:bg-amber-100/80'
+                      }`}
+                    >
+                      3分間
+                    </button>
+                    <button
+                      onClick={() => setEscTimeOption('5min')}
+                      className={`py-2 px-1 rounded-xl font-extrabold text-sm transition-all ${
+                        escTimeOption === '5min'
+                          ? 'bg-amber-500 text-white shadow-md scale-[1.02]'
+                          : 'text-amber-900 hover:bg-amber-100/80'
+                      }`}
+                    >
+                      5分間
+                    </button>
+                    <button
+                      onClick={() => setEscTimeOption('unlimited')}
+                      className={`py-2 px-1 rounded-xl font-extrabold text-sm transition-all ${
+                        escTimeOption === 'unlimited'
+                          ? 'bg-amber-500 text-white shadow-md scale-[1.02]'
+                          : 'text-amber-900 hover:bg-amber-100/80'
+                      }`}
+                    >
+                      無制限
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={startEscalation}
+                    className="relative flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-600 hover:to-amber-600 text-white py-4 px-4 rounded-2xl shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c] active:translate-y-[6px] transition-all cursor-pointer border-2 border-yellow-300 mt-1"
+                  >
+                    <span className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
+                      🚀 エスカレーション問題 スタート
+                    </span>
+                    <span className="text-xs md:text-sm font-bold text-yellow-100 drop-shadow-sm">
+                      Lv.{startEscLv} からスタート！ ({escTimeOption === '3min' ? '3分間' : escTimeOption === '5min' ? '5分間' : '無制限'})
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={resetEscalationLevel}
+                    disabled={startEscLv === 1}
+                    className={`text-xs md:text-sm font-bold py-2 px-4 rounded-xl transition-all self-center mt-1 border shadow-sm ${
+                      startEscLv > 1 
+                        ? 'text-red-600 hover:text-red-700 bg-red-100 hover:bg-red-200 border-red-300 active:scale-95 cursor-pointer' 
+                        : 'text-gray-400 bg-gray-100 border-gray-200 opacity-60 cursor-not-allowed'
+                    }`}
+                  >
+                    🔄 スタートレベルを Lv.1 にリセット
+                  </button>
+                </div>
+              )}
+              {[1, 2, 3, 4, 5].map(lv => {
+                const unlocked = isLevelUnlocked(lv);
+                return (
+                  <button 
+                    key={lv}
+                    onClick={() => { setIsEscalation(false); setLevel(lv); setView('course'); }}
+                    disabled={!unlocked}
+                    className={`relative flex flex-col items-center justify-center gap-1 ${theme.btn} text-white py-4 md:py-5 px-4 rounded-2xl transition-all ${
+                      unlocked ? 'active:translate-y-[6px]' : 'opacity-50 pointer-events-none'
+                    }`}
+                  >
+                    <span className="text-xl md:text-2xl font-bold">レベル {lv}</span>
+                    <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">
+                      合計: {getLevelTotalPoints(lv)} pt
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const CourseView = ({ type, level, setView, setCourse }) => {
+      const [records, setRecords] = useState({});
+
+      useEffect(() => {
+        const loadedRecords = JSON.parse(localStorage.getItem('sansu_records') || '{}');
+        setRecords(loadedRecords[type]?.[level] || {});
+      }, [type, level]);
+
+      const theme = getTheme(type);
+
+      const totalPoints = [
+        'count_10_points', 'count_20_points', 'count_30_points',
+        'time_60_points', 'time_120_points', 'time_180_points'
+      ].reduce((sum, key) => sum + (records[key] || 0), 0);
+
+      const isCourseUnlocked = (mode, value) => {
+        if (mode === 'count') {
+          if (value === 10) return true;
+          if (value === 20) return records['count_10'] !== undefined;
+          if (value === 30) return records['count_20'] !== undefined;
+        } else if (mode === 'time') {
+          if (value === 60) return true;
+          if (value === 120) return records['time_60'] !== undefined;
+          if (value === 180) return records['time_120'] !== undefined;
+        }
+        return false;
+      };
+
+      return (
+        <div className={`flex flex-col items-center justify-center min-h-screen ${theme.bg} p-6`}>
+          <div className={`bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 ${theme.border}`}>
+            <button onClick={() => setView('level')} className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold mb-4"><ArrowLeft className="w-5 h-5 inline-block"/> もどる</button>
+            <h2 className="text-2xl font-extrabold mb-4">コースをえらぼう</h2>
+            <div className="mb-8 flex justify-center"><div className="bg-yellow-50 border-2 border-yellow-200 text-yellow-700 px-6 py-2 rounded-full font-extrabold text-lg flex items-center gap-2 shadow-sm"><Award className="w-6 h-6 text-yellow-500 inline-block" /> このレベルの合計: {totalPoints} pt</div></div>
+            <h3 className="text-xl font-bold text-gray-600 mb-4 text-left pl-2 flex items-center gap-2"><Star className="w-6 h-6 text-yellow-500 fill-current inline-block" /> もんだいすう コース</h3>
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {[10, 20, 30].map(n => {
+                const unlocked = isCourseUnlocked('count', n);
+                return <button key={n} onClick={() => { setCourse({mode:'count', value:n}); setView('quiz'); }} disabled={!unlocked} className={`flex flex-col items-center justify-center min-h-[96px] ${theme.btnC} text-white py-3 px-2 rounded-xl font-bold ${!unlocked ? 'opacity-50 pointer-events-none' : 'active:translate-y-[4px]'}`}><span className="text-lg">{n}問</span>{records[`count_${n}`]!==undefined&&<span className="text-xs">最高: {Math.floor(records[`count_${n}`]/60)}分{(records[`count_${n}`]%60).toString().padStart(2,'0')}秒</span>}<span className="text-xs text-yellow-200">★ {records[`count_${n}_points`]||0} pt</span></button>
+              })}
+            </div>
+            <h3 className="text-xl font-bold text-gray-600 mb-4 text-left pl-2 flex items-center gap-2">⏳ じかん コース</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3].map(n => {
+                const unlocked = isCourseUnlocked('time', n * 60);
+                return <button key={n} onClick={() => { setCourse({mode:'time', value:n*60}); setView('quiz'); }} disabled={!unlocked} className={`flex flex-col items-center justify-center min-h-[96px] ${theme.btnT} text-white py-3 px-2 rounded-xl font-bold ${!unlocked ? 'opacity-50 pointer-events-none' : 'active:translate-y-[4px]'}`}><span className="text-lg">{n}分間</span>{records[`time_${n*60}`]!==undefined&&<span className="text-xs">最高: {records[`time_${n*60}`]}問</span>}<span className="text-xs text-yellow-200">★ {records[`time_${n*60}_points`]||0} pt</span></button>
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const QuizView = ({ type, level, course, setView, setResult, isEscalation }) => {
+      const [problem, setProblem] = useState({ n1: 0, n2: 0, op: '+', ans: 0, labels: [], count: 5, answerType: 'integer' });
+      const [userInput, setUserInput] = useState(''); const [userInputRem, setUserInputRem] = useState('');
+      const [userInputNum, setUserInputNum] = useState(''); const [userInputDen, setUserInputDen] = useState(''); const [userInputInt, setUserInputInt] = useState('');
+      const [userInputCm, setUserInputCm] = useState(''); const [userInputMm, setUserInputMm] = useState('');
+      const [userInputUnit1, setUserInputUnit1] = useState(''); const [userInputUnit2, setUserInputUnit2] = useState('');
+      const [userInputApprox1, setUserInputApprox1] = useState(''); const [userInputApprox2, setUserInputApprox2] = useState('');
+      
+      const [focusedInput, setFocusedInput] = useState('ans'); const [status, setStatus] = useState('idle');
+      const [score, setScore] = useState(0); const [currentProblemMistakes, setCurrentProblemMistakes] = useState(0); 
+      const [countdown, setCountdown] = useState(3); const [startTime, setStartTime] = useState(null);
+      const [now, setNow] = useState(null); const [mistakes, setMistakes] = useState(0);
+      const isFinishedRef = useRef(false); const canvasRef = useRef(null); const [clearKey, setClearKey] = useState(Date.now());
+      const lastActionTimeRef = useRef(Date.now());
+      const [showHint, setShowHint] = useState(false);
+
+      // Escalation Mode State
+      const [currentEscLevel, setCurrentEscLevel] = useState(1);
+      const [streak, setStreak] = useState(0);
+      const [levelUpMsg, setLevelUpMsg] = useState('');
+
+      const theme = getTheme(type);
+      const isNumberLine = problem.op === '数直線'; const isLength = problem.op === '長さ'; const isUnit = problem.op === '単位'; const isWordProblem = problem.op === '文章問題'; const isApprox = problem.op === 'がい数'; const isClock = problem.op === '時刻と時間';
+      const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox && !isClock;
+
+      const renderCorrectAnswer = (p) => {
+        if (p.op === '文章問題') {
+          return (
+            <div className="flex flex-col gap-1 text-xl">
+              <span className="text-gray-500 font-normal text-sm">しき: {p.equation}</span>
+              <span>こたえ: {p.ans}</span>
+            </div>
+          );
+        } else if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
+          return (
+            <div className="flex flex-col items-center inline-flex align-middle text-xl">
+              <span>{p.ansNum}</span>
+              <div className="w-8 border-b-2 border-red-600 my-1"></div>
+              <span>{p.ansDen}</span>
+            </div>
+          );
+        } else if (p.answerType === 'fraction_mixed') {
+          return (
+            <div className="flex items-center inline-flex align-middle gap-1 text-xl">
+              <span>{p.ansInt}</span>
+              <div className="flex flex-col items-center">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            </div>
+          );
+        } else if (p.answerType === 'integer' || (!p.answerType && !['長さ', '単位', '文章問題', 'がい数', '数直線', '時刻と時間'].includes(p.op))) {
+          return p.rem !== undefined ? <span>{p.ans} あまり {p.rem}</span> : <span>{p.ans}</span>;
+        } else if (p.answerType === 'length_cm') {
+          return <span>{p.ansCm} cm</span>;
+        } else if (p.answerType === 'length_mm') {
+          return <span>{p.ansMm} mm</span>;
+        } else if (p.answerType === 'length_cm_mm') {
+          return <span>{p.ansCm} cm {p.ansMm} mm</span>;
+        } else if (p.answerType === 'unit_large') {
+          return <span>{p.ans1} {p.unitLarge}</span>;
+        } else if (p.answerType === 'unit_small' || p.answerType === 'unit_small_from_composite') {
+          return <span>{p.ans1} {p.unitSmall}</span>;
+        } else if (p.answerType === 'unit_composite_from_small') {
+          return <span>{p.ans1} {p.unitLarge} {p.ans2} {p.unitSmall}</span>;
+        } else if (p.answerType === 'approx_range') {
+          return <span>{p.ans1} 以上、 {p.ans2} 未満</span>;
+        } else if (p.answerType === 'clock' || p.answerType === 'clock_read') {
+          return <span>{p.ans1} 時 {p.ans2} 分</span>;
+        } else if (p.answerType === 'duration') {
+          return <span>{p.ans1} 時間 {p.ans2} 分</span>;
+        } else if (p.op === '数直線') {
+          if (p.answerType === 'decimal') {
+            return <span>{p.ans}</span>;
+          }
+          if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
+            return (
+              <div className="flex flex-col items-center inline-flex align-middle text-xl">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            );
+          } else if (p.answerType === 'fraction_mixed') {
+            if (p.ansInt > 0 && p.ansNum > 0) {
+              return (
+                <div className="flex items-center inline-flex align-middle gap-1 text-xl">
+                  <span>{p.ansInt}</span>
+                  <div className="flex flex-col items-center">
+                    <span>{p.ansNum}</span>
+                    <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                    <span>{p.ansDen}</span>
+                  </div>
+                </div>
+              );
+            }
+            if (p.ansInt > 0) return <span>{p.ansInt}</span>;
+            return (
+              <div className="flex flex-col items-center inline-flex align-middle text-xl">
+                <span>{p.ansNum}</span>
+                <div className="w-8 border-b-2 border-red-600 my-1"></div>
+                <span>{p.ansDen}</span>
+              </div>
+            );
+          }
+          return <span>{p.ans}</span>;
+        }
+        return <span>{p.ans}</span>;
+      };
+
+      const handleCheck = useCallback(() => {
+        if (countdown !== null || status === 'correct') return;
+        let isCorrectAns = false, isCorrectRem = true;
+        const hasRem = problem.rem !== undefined;
+        if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) { if (!userInput) return; if (hasRem && !userInputRem) return; isCorrectAns = parseInt(userInput) === problem.ans; isCorrectRem = hasRem ? parseInt(userInputRem) === problem.rem : true; }
+        else if (problem.answerType === 'decimal') { if (!userInput) return; isCorrectAns = parseFloat(userInput) === problem.ans; }
+        else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') { if (!userInputNum || !userInputDen) return; isCorrectAns = parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen; }
+        else if (problem.answerType === 'fraction_mixed') { if (!userInputInt || !userInputNum || !userInputDen) return; isCorrectAns = parseInt(userInputInt) === problem.ansInt && parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen; }
+        else if (problem.answerType === 'length_cm') { if (!userInputCm) return; isCorrectAns = parseInt(userInputCm) === problem.ansCm; }
+        else if (problem.answerType === 'length_mm') { if (!userInputMm) return; isCorrectAns = parseInt(userInputMm) === problem.ansMm; }
+        else if (problem.answerType === 'length_cm_mm') { if (!userInputCm || !userInputMm) return; isCorrectAns = parseInt(userInputCm) === problem.ansCm && parseInt(userInputMm) === problem.ansMm; }
+        else if (problem.answerType === 'unit_composite_from_small') { if (!userInputUnit1 || !userInputUnit2) return; isCorrectAns = parseFloat(userInputUnit1) === problem.ans1 && parseFloat(userInputUnit2) === problem.ans2; }
+        else if (problem.answerType && problem.answerType.startsWith('unit_')) { if (!userInputUnit1) return; isCorrectAns = parseFloat(userInputUnit1) === problem.ans1; }
+        else if (problem.answerType === 'approx_range') { if (!userInputApprox1 || !userInputApprox2) return; isCorrectAns = parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2; }
+        else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') { if (!userInputUnit1 || !userInputUnit2) return; isCorrectAns = parseInt(userInputUnit1) === problem.ans1 && parseInt(userInputUnit2) === problem.ans2; }
+        
+        const delayTime = isWordProblem ? 3000 : 750;
+
+        if (isCorrectAns && isCorrectRem) {
+          playCorrectSound(); setStatus('correct'); const newScore = score + 1; setScore(newScore);
+          
+          let activeLevel = isEscalation ? currentEscLevel : level;
+          let nextLevel = activeLevel;
+
+          if (isEscalation) {
+            const newStreak = streak + 1;
+            if (newStreak >= 15 && currentEscLevel < 5) {
+              nextLevel = currentEscLevel + 1;
+              setCurrentEscLevel(nextLevel);
+              setStreak(0);
+              setLevelUpMsg(`🎉 15問連続正解！ レベル ${nextLevel} にアップ！`);
+              unlockLevelByEscalation(type, nextLevel);
+              saveEscalationLevel(type, nextLevel);
+            } else {
+              setStreak(newStreak);
+            }
+          }
+
+          if (!isFinishedRef.current) addPoints(type, activeLevel, course.mode, course.value, 1 * activeLevel); 
+          
+          if (course.mode === 'count' && newScore >= course.value) {
+            isFinishedRef.current = true; const finalTime = Math.floor((Date.now() - startTime) / 1000);
+            setTimeout(() => {
+              const isNew = saveRecord(type, activeLevel, 'count', course.value, finalTime);
+              let bp = isNew ? 10 * activeLevel : 0; const acb = checkAndApplyAllClearBonus(type, activeLevel); bp += acb;
+              if (bp > 0) addPoints(type, activeLevel, 'count', course.value, bp);
+              setResult({ score: newScore, timeElapsed: finalTime, mode: 'count', value: course.value, isNewRecord: isNew, earnedPoints: (newScore * activeLevel) + bp });
+              setView('result');
+            }, delayTime);
+          } else {
+            setTimeout(() => {
+              const newProb = generateProblem(type, nextLevel, problem); setProblem(newProb);
+              setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
+              setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
+              setStatus('idle'); setClearKey(Date.now()); setCurrentProblemMistakes(0);
+              setShowHint(false);
+              setLevelUpMsg('');
+            }, delayTime);
+          }
+        } else {
+          saveMistake(type, problem); setStatus('wrong');
+          if (isEscalation) {
+            setStreak(0);
+          }
+          setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
+          setFocusedInput(problem.answerType==='fraction_proper'||problem.answerType==='fraction_improper'?'num':problem.answerType==='fraction_mixed'?'int':problem.answerType==='length_cm'||problem.answerType==='length_cm_mm'?'cm':problem.answerType==='length_mm'?'mm':problem.answerType==='unit_composite_from_small'||problem.answerType==='unit_large'||problem.answerType==='unit_small'||problem.answerType==='unit_small_from_composite'||problem.answerType==='clock'||problem.answerType==='clock_read'||problem.answerType==='duration'?'unit1':problem.answerType==='approx_range'?'approx1':'ans');
+          const newMistakes = mistakes + 1; setMistakes(newMistakes); setCurrentProblemMistakes(prev => prev + 1);
+          
+          const wrongDelayTime = isWordProblem ? 3000 : 500;
+          if (newMistakes >= 3) {
+            isFinishedRef.current = true;
+            setTimeout(() => { setResult({ isGameOver: true, reason: 'mistakes', earnedPoints: score * (isEscalation ? currentEscLevel : level), finalEscLevel: isEscalation ? currentEscLevel : null }); setView('result'); }, wrongDelayTime);
+          } else { setTimeout(() => setStatus('idle'), wrongDelayTime); }
+        }
+      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, score, course, startTime, setResult, setView, mistakes, type, level, isWordProblem, isEscalation, currentEscLevel, streak]);
+
+      useEffect(() => {
+        const initialLevel = isEscalation ? getLastEscalationLevel(type) : level;
+        setCurrentEscLevel(initialLevel);
+        setStreak(0);
+        setLevelUpMsg('');
+        const newProb = generateProblem(type, initialLevel); setProblem(newProb);
+        setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
+        setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
+        setStatus('idle'); setScore(0); setCountdown(3); setStartTime(null); setNow(null); setMistakes(0); setCurrentProblemMistakes(0); setClearKey(Date.now()); isFinishedRef.current = false;
+        setShowHint(false);
+        const timer = setInterval(() => { setCountdown(prev => { if (prev <= 1) { clearInterval(timer); const t = Date.now(); setStartTime(t); setNow(t); return null; } return prev - 1; }); }, 1000);
+        return () => clearInterval(timer);
+      }, [type, level, course, isEscalation]);
+
+      useEffect(() => {
+        const resetIdleTimer = () => lastActionTimeRef.current = Date.now();
+        window.addEventListener('pointerdown', resetIdleTimer); window.addEventListener('keydown', resetIdleTimer); window.addEventListener('touchstart', resetIdleTimer);
+        return () => { window.removeEventListener('pointerdown', resetIdleTimer); window.removeEventListener('keydown', resetIdleTimer); window.removeEventListener('touchstart', resetIdleTimer); };
+      }, []);
+
+      useEffect(() => {
+        if (countdown !== null) return;
+        const timer = setInterval(() => { setNow(Date.now()); if (!isFinishedRef.current && Date.now() - lastActionTimeRef.current >= 5 * 60 * 1000) { isFinishedRef.current = true; setResult({ isGameOver: true, reason: 'timeout_idle', earnedPoints: 0 }); setView('result'); } }, 100);
+        return () => clearInterval(timer);
+      }, [countdown, setView, setResult]);
+
+      const elapsedSec = startTime && now ? Math.floor((now - startTime) / 1000) : 0;
+      const timeLeft = course.mode === 'time' ? Math.max(0, course.value - elapsedSec) : null;
+
+      useEffect(() => {
+        if (course.mode === 'time' && timeLeft !== null && timeLeft <= 0 && !isFinishedRef.current) {
+          isFinishedRef.current = true;
+          const activeLevel = isEscalation ? currentEscLevel : level;
+          if (score === 0) {
+            setResult({ isGameOver: true, reason: 'timeout_zero', earnedPoints: 0, finalEscLevel: isEscalation ? currentEscLevel : null });
+            setView('result');
+            return;
+          }
+          const isNew = saveRecord(type, activeLevel, 'time', course.value, score);
+          let bp = isNew ? 10 * activeLevel : 0; const acb = checkAndApplyAllClearBonus(type, activeLevel); bp += acb;
+          if (bp > 0) addPoints(type, activeLevel, 'time', course.value, bp);
+          setResult({ score, timeElapsed: course.value, mode: 'time', value: course.value, isNewRecord: isNew, earnedPoints: (score * activeLevel) + bp, finalEscLevel: isEscalation ? currentEscLevel : null });
+          setView('result');
+        }
+      }, [timeLeft, course.mode, score, course.value, setView, setResult, type, level, isEscalation, currentEscLevel]);
+
+      const handleInput = useCallback((numStr) => {
+        if (countdown !== null || status === 'correct') return;
+        if (focusedInput === 'ans') {
+          if (numStr === '.' && userInput.includes('.')) return;
+          setUserInput(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'rem') {
+          setUserInputRem(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'num') {
+          setUserInputNum(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'den') {
+          setUserInputDen(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'int') {
+          setUserInputInt(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'cm') {
+          setUserInputCm(prev => prev.length < 3 ? prev + numStr : prev);
+        } else if (focusedInput === 'mm') {
+          setUserInputMm(prev => prev.length < 2 ? prev + numStr : prev);
+        } else if (focusedInput === 'unit1') {
+          if (numStr === '.' && userInputUnit1.includes('.')) return;
+          setUserInputUnit1(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'unit2') {
+          if (numStr === '.' && userInputUnit2.includes('.')) return;
+          setUserInputUnit2(prev => prev.length < 4 ? prev + numStr : prev);
+        } else if (focusedInput === 'approx1') {
+          setUserInputApprox1(prev => prev.length < 6 ? prev + numStr : prev);
+        } else if (focusedInput === 'approx2') {
+          setUserInputApprox2(prev => prev.length < 6 ? prev + numStr : prev);
+        }
+      }, [status, countdown, focusedInput, userInput, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2]);
+
+      const handleDelete = useCallback(() => {
+        if (countdown !== null || status === 'correct') return;
+        if (focusedInput === 'ans') setUserInput(prev => prev.slice(0, -1));
+        else if (focusedInput === 'rem') setUserInputRem(prev => prev.slice(0, -1));
+        else if (focusedInput === 'num') setUserInputNum(prev => prev.slice(0, -1));
+        else if (focusedInput === 'den') setUserInputDen(prev => prev.slice(0, -1));
+        else if (focusedInput === 'int') setUserInputInt(prev => prev.slice(0, -1));
+        else if (focusedInput === 'cm') setUserInputCm(prev => prev.slice(0, -1));
+        else if (focusedInput === 'mm') setUserInputMm(prev => prev.slice(0, -1));
+        else if (focusedInput === 'unit1') setUserInputUnit1(prev => prev.slice(0, -1));
+        else if (focusedInput === 'unit2') setUserInputUnit2(prev => prev.slice(0, -1));
+        else if (focusedInput === 'approx1') setUserInputApprox1(prev => prev.slice(0, -1));
+        else if (focusedInput === 'approx2') setUserInputApprox2(prev => prev.slice(0, -1));
+      }, [status, countdown, focusedInput]);
+
+      useEffect(() => {
+        if (countdown === null && status !== 'correct') {
+          const hasRem = problem.rem !== undefined;
+          if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
+            if (hasRem) {
+              if (focusedInput === 'ans' && userInput && parseInt(userInput) === problem.ans) {
+                setFocusedInput('rem');
+              }
+              if (userInput && userInputRem && parseInt(userInput) === problem.ans && parseInt(userInputRem) === problem.rem) {
+                handleCheck();
+              }
+            } else {
+              if (userInput && parseInt(userInput) === problem.ans) {
+                handleCheck();
+              }
+            }
+          } else if (problem.answerType === 'decimal') {
+             if (userInput && parseFloat(userInput) === problem.ans) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'length_cm_mm') {
+             if (focusedInput === 'cm' && userInputCm && parseInt(userInputCm) === problem.ansCm) {
+               setFocusedInput('mm');
+             }
+             if (userInputCm && userInputMm && parseInt(userInputCm) === problem.ansCm && parseInt(userInputMm) === problem.ansMm) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'length_cm') {
+             if (userInputCm && parseInt(userInputCm) === problem.ansCm) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'length_mm') {
+             if (userInputMm && parseInt(userInputMm) === problem.ansMm) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'unit_composite_from_small') {
+             if (focusedInput === 'unit1' && userInputUnit1 && parseFloat(userInputUnit1) === problem.ans1) {
+               setFocusedInput('unit2');
+             }
+             if (userInputUnit1 && userInputUnit2 && parseFloat(userInputUnit1) === problem.ans1 && parseFloat(userInputUnit2) === problem.ans2) {
+               handleCheck();
+             }
+          } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
+             if (userInputUnit1 && parseFloat(userInputUnit1) === problem.ans1) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'approx_range') {
+             if (focusedInput === 'approx1' && userInputApprox1 && parseInt(userInputApprox1) === problem.ans1) {
+               setFocusedInput('approx2');
+             }
+             if (userInputApprox1 && userInputApprox2 && parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2) {
+               handleCheck();
+             }
+          } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
+             if (focusedInput === 'unit1' && userInputUnit1 && parseInt(userInputUnit1) === problem.ans1) {
+               setFocusedInput('unit2');
+             }
+             if (userInputUnit1 && userInputUnit2 && parseInt(userInputUnit1) === problem.ans1 && parseInt(userInputUnit2) === problem.ans2) {
+               handleCheck();
+             }
+          }
+
+          let shouldAutoCheckWrong = false;
+          const checkWrong = (val, correct) => {
+            if (!val || val.length < 3) return false;
+            const cStr = String(correct);
+            if (val === cStr) return false; 
+            if (cStr.startsWith(val)) return false; 
+            return true;
+          };
+
+          if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
+            if (focusedInput === 'ans' && checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'rem' && checkWrong(userInputRem, problem.rem)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'decimal') {
+            if (checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') {
+            if (focusedInput === 'num' && checkWrong(userInputNum, problem.ansNum)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'den' && checkWrong(userInputDen, problem.ansDen)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'fraction_mixed') {
+            if (focusedInput === 'int' && checkWrong(userInputInt, problem.ansInt)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'num' && checkWrong(userInputNum, problem.ansNum)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'den' && checkWrong(userInputDen, problem.ansDen)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'length_cm') {
+            if (checkWrong(userInputCm, problem.ansCm)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'length_mm') {
+            if (checkWrong(userInputMm, problem.ansMm)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'length_cm_mm') {
+            if (focusedInput === 'cm' && checkWrong(userInputCm, problem.ansCm)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'mm' && checkWrong(userInputMm, problem.ansMm)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'unit_composite_from_small') {
+            if (focusedInput === 'unit1' && checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'unit2' && checkWrong(userInputUnit2, problem.ans2)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
+            if (checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'approx_range') {
+            if (focusedInput === 'approx1' && checkWrong(userInputApprox1, problem.ans1)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'approx2' && checkWrong(userInputApprox2, problem.ans2)) shouldAutoCheckWrong = true;
+          } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
+            if (focusedInput === 'unit1' && checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
+            if (focusedInput === 'unit2' && checkWrong(userInputUnit2, problem.ans2)) shouldAutoCheckWrong = true;
+          }
+
+          if (shouldAutoCheckWrong) {
+            handleCheck();
+          }
+        }
+      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, handleCheck, countdown, focusedInput, isLength, isUnit, isWordProblem, isApprox, isClock]);
+
+      useEffect(() => {
+        if (countdown !== null) return;
+        const handleKeyDown = (e) => {
+          if (e.key >= '0' && e.key <= '9') {
+            handleInput(e.key);
+          } else if (e.key === '.') {
+            handleInput('.');
+          } else if (e.key === 'Backspace') {
+            handleDelete();
+          } else if (e.key === 'Enter') {
+            handleCheck();
+          }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [handleInput, handleDelete, handleCheck, countdown]);
+
+      const renderNumpad = () => {
+        const canSubmit = !(countdown !== null || (
+          (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) ? (!userInput || (problem.rem !== undefined && !userInputRem)) :
+          problem.answerType === 'decimal' ? !userInput :
+          (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') ? (!userInputNum || !userInputDen) :
+          problem.answerType === 'fraction_mixed' ? (!userInputInt || !userInputNum || !userInputDen) :
+          problem.answerType === 'length_cm' ? !userInputCm :
+          problem.answerType === 'length_mm' ? !userInputMm :
+          problem.answerType === 'length_cm_mm' ? (!userInputCm || !userInputMm) :
+          (problem.answerType === 'unit_large' || problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite') ? !userInputUnit1 :
+          problem.answerType === 'unit_composite_from_small' ? (!userInputUnit1 || !userInputUnit2) :
+          problem.answerType === 'approx_range' ? (!userInputApprox1 || !userInputApprox2) :
+          (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') ? (!userInputUnit1 || !userInputUnit2) :
+          true
+        ));
+
+        return (
+          <div className={`w-full ${isNumberLine || isLength || isUnit || isApprox || isClock ? 'max-w-xl' : 'max-w-md'} flex flex-col gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2 relative z-10`}>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                <button
+                  key={num}
+                  onClick={() => handleInput(num.toString())}
+                  disabled={countdown !== null}
+                  className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                onClick={handleDelete}
+                disabled={countdown !== null}
+                className={`bg-gray-200 text-sm sm:text-xl md:text-2xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#d1d5db] active:shadow-[0_0px_0_#d1d5db] active:translate-y-[4px]'}`}
+              >
+                けす
+              </button>
+              <button
+                onClick={() => handleInput('0')}
+                disabled={countdown !== null}
+                className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
+              >
+                0
+              </button>
+              <button
+                onClick={() => handleInput('.')}
+                disabled={countdown !== null || (problem.answerType !== 'decimal' && !problem.allowDecimal)}
+                className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null || (problem.answerType !== 'decimal' && !problem.allowDecimal) ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'} ${problem.answerType !== 'decimal' && !problem.allowDecimal ? 'invisible' : ''}`}
+              >
+                .
+              </button>
+            </div>
+            <button
+              onClick={handleCheck}
+              disabled={!canSubmit}
+              className={`text-lg sm:text-2xl md:text-3xl font-bold py-4 sm:py-6 md:py-8 rounded-xl sm:rounded-2xl transition-all w-full mt-2 ${
+                !canSubmit ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
+            >
+              こたえる
+            </button>
+          </div>
+        );
+      };
+
+      return (
+        <div className={`flex flex-col min-h-screen ${theme.bg} font-sans`}>
+          <div className="flex justify-between items-center p-2 sm:p-4 bg-white shadow-sm sticky top-0 z-[100] shrink-0">
+            <button 
+              onClick={() => {
+                if (isEscalation && course.mode === 'unlimited') {
+                  isFinishedRef.current = true;
+                  const finalTime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+                  setResult({
+                    score: score,
+                    timeElapsed: finalTime,
+                    mode: 'unlimited',
+                    value: 0,
+                    isNewRecord: false,
+                    earnedPoints: score * (isEscalation ? currentEscLevel : level),
+                    finalEscLevel: isEscalation ? currentEscLevel : null
+                  });
+                  setView('result');
+                } else {
+                  setView('level');
+                }
+              }}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold px-2 sm:px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5 inline-block" /> <span>もどる</span>
+            </button>
+            
+            <div className="flex flex-col items-center text-center px-1 my-auto">
+              <div className="text-xs sm:text-base md:text-xl font-extrabold text-gray-800 leading-tight">
+                {isEscalation ? `${theme.title} エスカレーション問題 レベル ${currentEscLevel}` : `${theme.title} レベル ${level}`}
+              </div>
+              {isEscalation && (
+                <span className="text-[10px] sm:text-xs font-bold text-amber-600">
+                  ({streak}/15問れんぞくせいかい)
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+              <div className="flex items-center gap-0.5 text-red-400">
+                {[...Array(3)].map((_, i) => (
+                  <Heart key={i} className={`w-5 h-5 md:w-6 md:h-6 ${i < 3 - mistakes ? 'fill-current' : 'text-gray-200'} inline-block`} />
+                ))}
+              </div>
+              {course.mode === 'time' && (
+                <div className={`text-xl font-bold ${timeLeft !== null && timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-gray-600'}`}>
+                  ⏳ {timeLeft !== null ? `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}` : '0:00'}
+                </div>
+              )}
+              {(course.mode === 'count' || course.mode === 'unlimited') && (
+                <div className="text-xl font-bold text-gray-600">
+                  ⏳ {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
+                </div>
+              )}
+              <div className="flex items-center gap-1 font-bold text-yellow-500 text-xl bg-yellow-50 px-3 py-1 rounded-full">
+                <Star className="w-6 h-6 fill-current inline-block" /> 
+                {course.mode === 'count' ? `${score}/${course.value}` : score}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 relative flex flex-col w-full">
+            {levelUpMsg && (
+              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-extrabold px-6 py-3 rounded-full shadow-2xl animate-bounce text-lg sm:text-xl border-2 border-white">
+                {levelUpMsg}
+              </div>
+            )}
+            {countdown !== null && (
+              <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center">
+                <div key={countdown} className="text-8xl sm:text-9xl md:text-[200px] font-extrabold text-orange-500 animate-in zoom-in duration-300">
+                  {countdown === 3 ? '３' : countdown === 2 ? '２' : countdown === 1 ? '１' : countdown}
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl mt-4 sm:mt-8 font-bold text-gray-600 animate-pulse">
+                  じゅんびは いいかな？
+                </div>
+              </div>
+            )}
+
+            <div className={`w-full flex-1 bg-white sm:rounded-t-3xl shadow-lg relative flex flex-col`}>
+              
+              {(isWordProblem || isApprox || isUnit || isNumberLine) && (
+                <div className={`w-full p-4 sm:p-8 z-20 shrink-0 border-b-4 ${isWordProblem ? 'bg-indigo-50 border-indigo-100' : isUnit ? 'bg-cyan-50 border-cyan-100' : isNumberLine ? 'bg-pink-50 border-pink-100' : 'bg-orange-50 border-orange-100'}`}>
+                  <div className={`text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed whitespace-pre-wrap text-left w-full max-w-4xl mx-auto border-l-4 pl-4 bg-white p-4 rounded-r-xl shadow-sm ${isWordProblem ? 'border-indigo-400' : isUnit ? 'border-cyan-400' : isNumberLine ? 'border-pink-400' : 'border-orange-400'}`}>
+                    {problem.text}
+                  </div>
+                </div>
+              )}
+
+              <div className="w-full flex flex-row relative min-h-[1400px]">
+                <div className={`flex flex-col items-center justify-start p-1 sm:p-4 order-1 bg-white z-10 pb-24 ${hasRightPanel ? 'w-1/2 border-r-2 border-gray-100' : 'w-full'}`}>
+                  <div className="sticky top-[80px] flex flex-col items-center w-full">
+                    
+                    {status === 'correct' && (
+                      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
+                        <Circle className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-green-500/80 inline-block" strokeWidth={3} />
+                      </div>
+                    )}
+                    {status === 'wrong' && (
+                      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
+                        <X className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-red-500/80 inline-block" strokeWidth={3} />
+                      </div>
+                    )}
+
+                    {isClock && (
+                      <div className="w-full flex flex-col items-center p-2">
+                         <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{problem.text}</span>
+                         
+                         <div className="mb-4">
+                           <button 
+                             onClick={() => setShowHint(prev => !prev)} 
+                             className={`px-6 py-2.5 rounded-2xl font-bold shadow-sm border transition-all flex items-center gap-2 ${
+                               showHint 
+                                 ? 'bg-amber-400 text-white border-amber-500 hover:bg-amber-500' 
+                                 : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
+                             }`}
+                           >
+                             <span>💡</span> <span>{showHint ? 'ヒントを かくす' : 'ヒントを みる'}</span>
+                           </button>
+                         </div>
+
+                         {showHint && (
+                           <div className="w-full flex justify-center animate-in fade-in zoom-in duration-200">
+                             {problem.answerType === 'clock_read' ? (
+                               <ClockSVG h={problem.h1} m={problem.m1} size={150} />
+                             ) : (
+                               <TimeLineSVG 
+                                 h1={problem.h1} 
+                                 m1={problem.m1} 
+                                 ansH={problem.ans1} 
+                                 ansM={problem.ans2} 
+                                 dm={problem.dm} 
+                                 dh={problem.dh} 
+                                 isAfter={problem.isAfter} 
+                                 isDuration={problem.answerType === 'duration'} 
+                                 h2={problem.h2} 
+                                 m2={problem.m2} 
+                               />
+                             )}
+                           </div>
+                         )}
+                      </div>
+                    )}
+
+                    {!isClock && !hasRightPanel ? (
+                      <div className="w-full text-2xl font-bold text-center mt-4">
+                        {isNumberLine && <NumberLineSVG labels={problem.labels} count={problem.count} />}
+                        {isLength && <RulerSVG totalMm={problem.ansTotalMm} maxCm={problem.maxCm} />}
+                      </div>
+                    ) : !isClock ? (
+                      <div className="text-5xl md:text-7xl font-bold text-center mt-8 tracking-widest">{problem.n1} {problem.op} {problem.n2} = </div>
+                    ) : null}
+
+                    <div className="flex justify-center items-end gap-2 mt-8">
+                      {problem.answerType === 'integer' || problem.answerType === 'decimal' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock) ? (
+                         <div onClick={() => setFocusedInput('ans')} className={`w-32 h-24 bg-gray-100 rounded-2xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'ans' ? 'border-orange-400' : ''}`}>{userInput || '?'}</div>
+                      ) : problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper' ? (
+                         <div className="flex flex-col items-center gap-2">
+                           <div onClick={() => setFocusedInput('num')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'num' ? 'border-orange-400' : ''}`}>{userInputNum || '?'}</div>
+                           <div className="w-28 h-1.5 bg-gray-800 rounded-full"></div>
+                           <div onClick={() => setFocusedInput('den')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'den' ? 'border-orange-400' : ''}`}>{userInputDen || '?'}</div>
+                         </div>
+                      ) : problem.answerType === 'fraction_mixed' ? (
+                         <div className="flex items-center gap-3">
+                           <div onClick={() => setFocusedInput('int')} className={`w-24 h-32 bg-gray-100 rounded-xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'int' ? 'border-orange-400' : ''}`}>{userInputInt || '?'}</div>
+                           <div className="flex flex-col items-center gap-2">
+                             <div onClick={() => setFocusedInput('num')} className={`w-20 h-14 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'num' ? 'border-orange-400' : ''}`}>{userInputNum || '?'}</div>
+                             <div className="w-24 h-1.5 bg-gray-800 rounded-full"></div>
+                             <div onClick={() => setFocusedInput('den')} className={`w-20 h-14 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'den' ? 'border-orange-400' : ''}`}>{userInputDen || '?'}</div>
+                           </div>
+                         </div>
+                      ) : problem.answerType === 'length_cm' ? (
+                         <div className="flex items-center gap-2">
+                           <div onClick={() => setFocusedInput('cm')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'cm' ? 'border-orange-400' : ''}`}>{userInputCm || '?'}</div>
+                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">cm</span>
+                         </div>
+                      ) : problem.answerType === 'length_mm' ? (
+                         <div className="flex items-center gap-2">
+                           <div onClick={() => setFocusedInput('mm')} className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}>{userInputMm || '?'}</div>
+                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">mm</span>
+                         </div>
+                      ) : problem.answerType === 'length_cm_mm' ? (
+                         <div className="flex items-center gap-3">
+                           <div onClick={() => setFocusedInput('cm')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'cm' ? 'border-orange-400' : ''}`}>{userInputCm || '?'}</div>
+                           <span className="text-xl font-bold">cm</span>
+                           <div onClick={() => setFocusedInput('mm')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'mm' ? 'border-orange-400' : ''}`}>{userInputMm || '?'}</div>
+                           <span className="text-xl font-bold">mm</span>
+                         </div>
+                      ) : problem.answerType === 'unit_large' ? (
+                         <div className="flex items-center gap-2">
+                           <div onClick={() => setFocusedInput('unit1')} className={`w-32 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitLarge}</span>
+                         </div>
+                      ) : problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite' ? (
+                         <div className="flex items-center gap-2">
+                           <div onClick={() => setFocusedInput('unit1')} className={`w-32 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitSmall}</span>
+                         </div>
+                      ) : problem.answerType === 'unit_composite_from_small' ? (
+                         <div className="flex items-center gap-3">
+                           <div onClick={() => setFocusedInput('unit1')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                           <span className="text-xl font-bold">{problem.unitLarge}</span>
+                           <div onClick={() => setFocusedInput('unit2')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
+                           <span className="text-xl font-bold">{problem.unitSmall}</span>
+                         </div>
+                      ) : problem.answerType === 'approx_range' ? (
+                         <div className="flex items-center gap-3">
+                           <div onClick={() => setFocusedInput('approx1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'approx1' ? 'border-orange-400' : ''}`}>{userInputApprox1 || '?'}</div>
+                           <span className="text-lg font-bold">以上</span>
+                           <div onClick={() => setFocusedInput('approx2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'approx2' ? 'border-orange-400' : ''}`}>{userInputApprox2 || '?'}</div>
+                           <span className="text-lg font-bold">未満</span>
+                         </div>
+                      ) : problem.answerType === 'clock' || problem.answerType === 'clock_read' ? (
+                         <div className="flex items-center gap-3">
+                           <div onClick={() => setFocusedInput('unit1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                           <span className="text-xl font-bold">時</span>
+                           <div onClick={() => setFocusedInput('unit2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
+                           <span className="text-xl font-bold">分</span>
+                         </div>
+                      ) : problem.answerType === 'duration' ? (
+                         <div className="flex items-center gap-3">
+                           <div onClick={() => setFocusedInput('unit1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
+                           <span className="text-xl font-bold">時間</span>
+                           <div onClick={() => setFocusedInput('unit2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
+                           <span className="text-xl font-bold">分</span>
+                         </div>
+                      ) : null}
+
+                      {problem.rem !== undefined && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock && (
+                         <div className="flex items-center gap-2">
+                           <span className="text-2xl font-bold">あまり</span>
+                           <div onClick={() => setFocusedInput('rem')} className={`w-24 h-24 bg-gray-100 rounded-2xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'rem' ? 'border-orange-400' : ''}`}>{userInputRem || '?'}</div>
+                         </div>
+                      )}
+                    </div>
+
+                    {currentProblemMistakes >= 2 && status !== 'correct' && (
+                      <div className="mt-6 p-4 bg-red-50 border-4 border-red-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
+                        <span className="text-sm md:text-base font-bold text-red-800 mb-2 block">せいかいは コレだよ！ かきうつしてね！</span>
+                        <div className="text-3xl md:text-4xl font-extrabold text-red-600 tracking-widest flex justify-center items-center">
+                          {renderCorrectAnswer(problem)}
+                        </div>
+                      </div>
+                    )}
+
+                    {isWordProblem && (status === 'correct' || status === 'wrong') && problem.equation && (
+                      <div className="mt-6 p-4 bg-yellow-50 border-4 border-yellow-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
+                        <span className="text-sm md:text-base font-bold text-yellow-800 mb-1 block">こたえを だすための 式</span>
+                        <span className="text-3xl md:text-4xl font-extrabold text-gray-800 tracking-widest">{problem.equation}</span>
+                      </div>
+                    )}
+
+                    <div className="mt-4 sm:mt-6 w-full flex justify-center pb-4">
+                      {renderNumpad()}
+                    </div>
+                  </div>
+                </div>
+
+                {hasRightPanel && (
+                  <div className="w-1/2 bg-amber-50 order-2 relative">
+                    <div className="sticky top-[80px] left-0 w-full flex justify-between items-center p-2 sm:p-4 z-20 pointer-events-none">
+                      <span className="text-xs sm:text-sm md:text-base font-bold text-amber-700/80 pl-1 sm:pl-2 drop-shadow-sm bg-amber-100/80 px-2 py-1 rounded">かきこみ</span>
+                      <div className="flex gap-1 sm:gap-2 pointer-events-auto">
+                        <button 
+                          onClick={() => canvasRef.current?.undo()}
+                          className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white/90 hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200 backdrop-blur-sm"
+                          title="１つもどす"
+                        >
+                          <Undo className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">もどる</span>
+                        </button>
+                        <button 
+                          onClick={() => canvasRef.current?.clear()}
+                          className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white/90 hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200 backdrop-blur-sm"
+                          title="かきこみをすべてけす"
+                        >
+                          <X className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">けす</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                      <GridBackground />
+                      <div className="sticky top-[120px]">
+                        <VerticalMath problem={problem} />
+                      </div>
+                    </div>
+                    <DrawCanvas ref={canvasRef} clearKey={clearKey} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const ResultView = ({ result, type, level, setView }) => {
+      const [showKusudama, setShowKusudama] = useState(result.isNewRecord && !result.isGameOver);
+      const theme = getTheme(type);
+      useEffect(() => { if (result.isNewRecord && !result.isGameOver) { const audio = new Audio('https://actions.google.com/sounds/v1/crowds/light_applause.ogg'); audio.volume = 0.5; audio.play().catch(e => console.log('Audio error:', e)); const timer = setTimeout(() => setShowKusudama(false), 8000); return () => { clearTimeout(timer); audio.pause(); }; } }, [result.isNewRecord, result.isGameOver]);
+
+      return (
+        <div className={`flex flex-col items-center justify-center min-h-screen ${theme.bg} p-6 animate-in fade-in duration-500`}>
+          {showKusudama && <Kusudama onClick={() => setShowKusudama(false)} />}
+          <div className={`relative bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 ${theme.border}`}>
+            {result.isGameOver ? (
+              <React.Fragment>
+                <div className="flex justify-center mb-4">
+                  <X className="w-24 h-24 text-red-500 inline-block" strokeWidth={3} />
+                </div>
+                <h2 className="text-3xl font-extrabold text-red-500 mb-2">ざんねん…</h2>
+                <p className="text-xl font-bold text-gray-700 mb-6">
+                  {result.reason === 'timeout_zero' ? 'じかんぎれに なっちゃったね' : 
+                   result.reason === 'timeout_idle' ? 'おやすみ中かな？' :
+                   '3かい まちがえちゃったね'}
+                </p>
+                <p className="text-lg text-gray-600">つぎは がんばろう！</p>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                {result.isNewRecord && (
+                  <div className="absolute -top-6 -right-4 md:-top-8 md:-right-8 bg-gradient-to-r from-pink-500 to-red-500 text-white font-extrabold text-xl md:text-2xl py-2 px-6 rounded-full shadow-lg transform rotate-12 animate-in zoom-in duration-500 delay-1000 z-10">
+                    🎊 しんきろく！
+                  </div>
+                )}
+                <Award className={`w-20 h-20 ${theme.text} mx-auto mb-4`} />
+                <h2 className={`text-3xl font-extrabold ${theme.text} mb-2`}>おつかれさま！</h2>
+                <div className="bg-gray-50 rounded-2xl p-6 mb-6">
+                  <p className="text-2xl font-bold mb-2">{result.mode==='count'?`${result.value}問 せいかい！`:`${result.score} 問 せいかい！`}</p>
+                  {result.finalEscLevel && (
+                    <p className="text-xl font-bold text-amber-600 mb-2">到達レベル: レベル {result.finalEscLevel}</p>
+                  )}
+                  <p className="text-3xl font-extrabold text-gray-700">
+                    {result.mode==='unlimited' ? '無制限モード' : result.mode==='count' ? `${Math.floor(result.timeElapsed/60)}分${result.timeElapsed%60}秒` : `${Math.floor(result.value/60)}分間`}
+                  </p>
+                </div>
+              </React.Fragment>
+            )}
+            
+            {result.earnedPoints > 0 && (
+              <div className="flex justify-center mb-6 animate-in slide-in-from-bottom-4 duration-500 delay-300">
+                 <div className="bg-yellow-100 border-2 border-yellow-300 text-yellow-700 px-6 py-2 rounded-full font-bold text-lg md:text-xl flex items-center gap-2 shadow-sm">
+                   <Star className="w-6 h-6 fill-yellow-500 text-yellow-500 inline-block" />
+                   {result.earnedPoints} pt ゲット！
+                 </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <button onClick={() => setView('quiz')} className={`relative ${theme.btn || 'bg-blue-500'} text-white text-xl font-bold py-4 rounded-2xl active:translate-y-[6px]`}>もう1回やる</button>
+              <button onClick={() => setView('level')} className="bg-gray-200 text-gray-700 text-lg font-bold py-4 rounded-2xl shadow-[0_6px_0_#9ca3af] active:translate-y-[6px] flex items-center justify-center gap-2">もどる</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     const RecordsView = ({ setView }) => {
       const [parsedRecords, setParsedRecords] = useState([]);
       const [mistakes, setMistakes] = useState({});
@@ -1291,926 +2499,6 @@
       );
     };
 
-    // ---------------------------------------------------------
-    // レベル選択画面
-    // ---------------------------------------------------------
-    const LevelView = ({ type, setView, setLevel }) => {
-      const [typeRecords, setTypeRecords] = useState({});
-
-      useEffect(() => {
-        const loadedRecords = JSON.parse(localStorage.getItem('sansu_records') || '{}');
-        setTypeRecords(loadedRecords[type] || {});
-      }, [type]);
-
-      const getLevelTotalPoints = (lv) => {
-        const lvData = typeRecords[lv] || {};
-        return [
-          'count_10_points', 'count_20_points', 'count_30_points',
-          'time_60_points', 'time_120_points', 'time_180_points'
-        ].reduce((sum, key) => sum + (lvData[key] || 0), 0);
-      };
-
-      const isLevelCleared = (lv) => {
-        const lvData = typeRecords[lv] || {};
-        const requiredKeys = ['count_10', 'count_20', 'count_30', 'time_60', 'time_120', 'time_180'];
-        return requiredKeys.every(key => lvData[key] !== undefined);
-      };
-
-      const isLevelUnlocked = (lv) => {
-        if (type === 'clock') return true; // 時刻と時間は全レベル解放
-        if (lv === 1 || lv === 2) return true;
-        if (lv === 3) return isLevelCleared(2);
-        if (lv === 4) return isLevelCleared(3);
-        if (lv === 5) return isLevelCleared(4);
-        return false;
-      };
-
-      const theme = {
-        add: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', btn: 'bg-red-400 hover:bg-red-500 shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', title: 'たしざん' },
-        sub: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', btn: 'bg-blue-400 hover:bg-blue-500 shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', title: 'ひき算' },
-        mul: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', btn: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', title: 'かけ算' },
-        div: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', btn: 'bg-purple-400 hover:bg-purple-500 shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', title: 'わり算' },
-        approx: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', btn: 'bg-orange-400 hover:bg-orange-500 shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c]', title: 'がい数' },
-        number_line: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', btn: 'bg-pink-400 hover:bg-pink-500 shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', title: '数直線' },
-        length: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', btn: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', title: '長さ' },
-        unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', btn: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', title: '単位' },
-        clock: { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200', btn: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', title: '時刻と時間' },
-        word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', btn: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', title: '文章問題' }
-      }[type];
-
-      return (
-        <div className={`flex flex-col items-center justify-center min-h-screen ${theme.bg} p-6`}>
-          <div className={`bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 ${theme.border}`}>
-            <div className="flex justify-between items-center mb-6">
-              <button 
-                onClick={() => setView('home')}
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 inline-block" /> もどる
-              </button>
-              <h2 className={`text-2xl md:text-3xl font-extrabold ${theme.text} pr-8`}>
-                {theme.title} - レベル
-              </h2>
-            </div>
-            <div className="flex flex-col gap-4">
-              {[1, 2, 3, 4, 5].map(lv => {
-                const unlocked = isLevelUnlocked(lv);
-                return (
-                  <button 
-                    key={lv}
-                    onClick={() => { setLevel(lv); setView('course'); }}
-                    disabled={!unlocked}
-                    className={`relative flex flex-col items-center justify-center gap-1 ${theme.btn} text-white py-4 md:py-5 px-4 rounded-2xl transition-all ${
-                      unlocked ? 'active:translate-y-[6px]' : 'opacity-50 pointer-events-none'
-                    }`}
-                  >
-                    <span className="text-xl md:text-2xl font-bold">レベル {lv}</span>
-                    <span className="text-sm font-bold text-yellow-200 drop-shadow-sm">
-                      合計: {getLevelTotalPoints(lv)} pt
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    // ---------------------------------------------------------
-    // コース選択画面
-    // ---------------------------------------------------------
-    const CourseView = ({ type, level, setView, setCourse }) => {
-      const [records, setRecords] = useState({});
-
-      useEffect(() => {
-        const loadedRecords = JSON.parse(localStorage.getItem('sansu_records') || '{}');
-        setRecords(loadedRecords[type]?.[level] || {});
-      }, [type, level]);
-
-      const theme = {
-        add: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', btnCount: 'bg-red-400 hover:bg-red-500 shadow-[0_6px_0_#b91c1c] active:shadow-[0_0px_0_#b91c1c]', btnTime: 'bg-orange-400 hover:bg-orange-500 shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c]', title: 'たしざん' },
-        sub: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', btnCount: 'bg-blue-400 hover:bg-blue-500 shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8]', btnTime: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', title: 'ひき算' },
-        mul: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', btnCount: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', btnTime: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857] active:shadow-[0_0px_0_#047857]', title: 'かけ算' },
-        div: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', btnCount: 'bg-purple-400 hover:bg-purple-500 shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9]', btnTime: 'bg-fuchsia-400 hover:bg-fuchsia-500 shadow-[0_6px_0_#a21caf] active:shadow-[0_0px_0_#a21caf]', title: 'わり算' },
-        approx: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', btnCount: 'bg-orange-400 hover:bg-orange-500 shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c]', btnTime: 'bg-amber-400 hover:bg-amber-500 shadow-[0_6px_0_#d97706] active:shadow-[0_0px_0_#d97706]', title: 'がい数' },
-        number_line: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', btnCount: 'bg-pink-400 hover:bg-pink-500 shadow-[0_6px_0_#be185d] active:shadow-[0_0px_0_#be185d]', btnTime: 'bg-rose-400 hover:bg-rose-500 shadow-[0_6px_0_#9f1239] active:shadow-[0_0px_0_#9f1239]', title: '数直線' },
-        length: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', btnCount: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:shadow-[0_0px_0_#0f766e]', btnTime: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857] active:shadow-[0_0px_0_#047857]', title: '長さ' },
-        unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', btnCount: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', btnTime: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0284c7] active:shadow-[0_0px_0_#0284c7]', title: '単位' },
-        clock: { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200', btnCount: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', btnTime: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d] active:shadow-[0_0px_0_#15803d]', title: '時刻と時間' },
-        word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', btnCount: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', btnTime: 'bg-violet-400 hover:bg-violet-500 shadow-[0_6px_0_#5b21b6] active:shadow-[0_0px_0_#5b21b6]', title: '文章問題' }
-      }[type];
-
-      const totalPoints = [
-        'count_10_points', 'count_20_points', 'count_30_points',
-        'time_60_points', 'time_120_points', 'time_180_points'
-      ].reduce((sum, key) => sum + (records[key] || 0), 0);
-
-      const isCourseUnlocked = (mode, value) => {
-        if (mode === 'count') {
-          if (value === 10) return true;
-          if (value === 20) return records['count_10'] !== undefined;
-          if (value === 30) return records['count_20'] !== undefined;
-        } else if (mode === 'time') {
-          if (value === 60) return true;
-          if (value === 120) return records['time_60'] !== undefined;
-          if (value === 180) return records['time_120'] !== undefined;
-        }
-        return false;
-      };
-
-      return (
-        <div className={`flex flex-col items-center justify-center min-h-screen ${theme.bg} p-6`}>
-          <div className={`bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 ${theme.border}`}>
-            <button onClick={() => setView('level')} className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold mb-4"><ArrowLeft className="w-5 h-5 inline-block"/> もどる</button>
-            <h2 className="text-2xl font-extrabold mb-4">コースをえらぼう</h2>
-            <div className="mb-8 flex justify-center"><div className="bg-yellow-50 border-2 border-yellow-200 text-yellow-700 px-6 py-2 rounded-full font-extrabold text-lg flex items-center gap-2 shadow-sm"><Award className="w-6 h-6 text-yellow-500 inline-block" /> このレベルの合計: {totalPoints} pt</div></div>
-            <h3 className="text-xl font-bold text-gray-600 mb-4 text-left pl-2 flex items-center gap-2"><Star className="w-6 h-6 text-yellow-500 fill-current inline-block" /> もんだいすう コース</h3>
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {[10, 20, 30].map(n => {
-                const unlocked = isCourseUnlocked('count', n);
-                return <button key={n} onClick={() => { setCourse({mode:'count', value:n}); setView('quiz'); }} disabled={!unlocked} className={`flex flex-col items-center justify-center min-h-[96px] ${theme.btnCount} text-white py-3 px-2 rounded-xl font-bold ${!unlocked ? 'opacity-50 pointer-events-none' : 'active:translate-y-[4px]'}`}><span className="text-lg">{n}問</span>{records[`count_${n}`]!==undefined&&<span className="text-xs">最高: {Math.floor(records[`count_${n}`]/60)}分{(records[`count_${n}`]%60).toString().padStart(2,'0')}秒</span>}<span className="text-xs text-yellow-200">★ {records[`count_${n}_points`]||0} pt</span></button>
-              })}
-            </div>
-            <h3 className="text-xl font-bold text-gray-600 mb-4 text-left pl-2 flex items-center gap-2">⏳ じかん コース</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3].map(n => {
-                const unlocked = isCourseUnlocked('time', n * 60);
-                return <button key={n} onClick={() => { setCourse({mode:'time', value:n*60}); setView('quiz'); }} disabled={!unlocked} className={`flex flex-col items-center justify-center min-h-[96px] ${theme.btnTime} text-white py-3 px-2 rounded-xl font-bold ${!unlocked ? 'opacity-50 pointer-events-none' : 'active:translate-y-[4px]'}`}><span className="text-lg">{n}分間</span>{records[`time_${n*60}`]!==undefined&&<span className="text-xs">最高: {records[`time_${n*60}`]}問</span>}<span className="text-xs text-yellow-200">★ {records[`time_${n*60}_points`]||0} pt</span></button>
-              })}
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    // ---------------------------------------------------------
-    // クイズ・回答画面
-    // ---------------------------------------------------------
-    const QuizView = ({ type, level, course, setView, setResult }) => {
-      const [problem, setProblem] = useState({ n1: 0, n2: 0, op: '+', ans: 0, labels: [], count: 5, answerType: 'integer' });
-      const [userInput, setUserInput] = useState(''); const [userInputRem, setUserInputRem] = useState('');
-      const [userInputNum, setUserInputNum] = useState(''); const [userInputDen, setUserInputDen] = useState(''); const [userInputInt, setUserInputInt] = useState('');
-      const [userInputCm, setUserInputCm] = useState(''); const [userInputMm, setUserInputMm] = useState('');
-      const [userInputUnit1, setUserInputUnit1] = useState(''); const [userInputUnit2, setUserInputUnit2] = useState('');
-      const [userInputApprox1, setUserInputApprox1] = useState(''); const [userInputApprox2, setUserInputApprox2] = useState('');
-      
-      const [focusedInput, setFocusedInput] = useState('ans'); const [status, setStatus] = useState('idle');
-      const [score, setScore] = useState(0); const [currentProblemMistakes, setCurrentProblemMistakes] = useState(0); 
-      const [countdown, setCountdown] = useState(3); const [startTime, setStartTime] = useState(null);
-      const [now, setNow] = useState(null); const [mistakes, setMistakes] = useState(0);
-      const isFinishedRef = useRef(false); const canvasRef = useRef(null); const [clearKey, setClearKey] = useState(Date.now());
-      const lastActionTimeRef = useRef(Date.now());
-      const [showHint, setShowHint] = useState(false); // ヒント表示用のステート
-
-      const theme = getTheme(type);
-      const isNumberLine = problem.op === '数直線'; const isLength = problem.op === '長さ'; const isUnit = problem.op === '単位'; const isWordProblem = problem.op === '文章問題'; const isApprox = problem.op === 'がい数'; const isClock = problem.op === '時刻と時間';
-      const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox && !isClock;
-
-      // Correct answer renderer to prevent ReferenceError when displaying answers on 2 mistakes
-      const renderCorrectAnswer = (p) => {
-        if (p.op === '文章問題') {
-          return (
-            <div className="flex flex-col gap-1 text-xl">
-              <span className="text-gray-500 font-normal text-sm">しき: {p.equation}</span>
-              <span>こたえ: {p.ans}</span>
-            </div>
-          );
-        } else if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
-          return (
-            <div className="flex flex-col items-center inline-flex align-middle text-xl">
-              <span>{p.ansNum}</span>
-              <div className="w-8 border-b-2 border-red-600 my-1"></div>
-              <span>{p.ansDen}</span>
-            </div>
-          );
-        } else if (p.answerType === 'fraction_mixed') {
-          return (
-            <div className="flex items-center inline-flex align-middle gap-1 text-xl">
-              <span>{p.ansInt}</span>
-              <div className="flex flex-col items-center">
-                <span>{p.ansNum}</span>
-                <div className="w-8 border-b-2 border-red-600 my-1"></div>
-                <span>{p.ansDen}</span>
-              </div>
-            </div>
-          );
-        } else if (p.answerType === 'integer' || (!p.answerType && !['長さ', '単位', '文章問題', 'がい数', '数直線', '時刻と時間'].includes(p.op))) {
-          return p.rem !== undefined ? <span>{p.ans} あまり {p.rem}</span> : <span>{p.ans}</span>;
-        } else if (p.answerType === 'length_cm') {
-          return <span>{p.ansCm} cm</span>;
-        } else if (p.answerType === 'length_mm') {
-          return <span>{p.ansMm} mm</span>;
-        } else if (p.answerType === 'length_cm_mm') {
-          return <span>{p.ansCm} cm {p.ansMm} mm</span>;
-        } else if (p.answerType === 'unit_large') {
-          return <span>{p.ans1} {p.unitLarge}</span>;
-        } else if (p.answerType === 'unit_small' || p.answerType === 'unit_small_from_composite') {
-          return <span>{p.ans1} {p.unitSmall}</span>;
-        } else if (p.answerType === 'unit_composite_from_small') {
-          return <span>{p.ans1} {p.unitLarge} {p.ans2} {p.unitSmall}</span>;
-        } else if (p.answerType === 'approx_range') {
-          return <span>{p.ans1} 以上、 {p.ans2} 未満</span>;
-        } else if (p.answerType === 'clock' || p.answerType === 'clock_read') {
-          return <span>{p.ans1} 時 {p.ans2} 分</span>;
-        } else if (p.answerType === 'duration') {
-          return <span>{p.ans1} 時間 {p.ans2} 分</span>;
-        } else if (p.op === '数直線') {
-          if (p.answerType === 'decimal') {
-            return <span>{p.ans}</span>;
-          }
-          if (p.answerType === 'fraction_proper' || p.answerType === 'fraction_improper') {
-            return (
-              <div className="flex flex-col items-center inline-flex align-middle text-xl">
-                <span>{p.ansNum}</span>
-                <div className="w-8 border-b-2 border-red-600 my-1"></div>
-                <span>{p.ansDen}</span>
-              </div>
-            );
-          } else if (p.answerType === 'fraction_mixed') {
-            if (p.ansInt > 0 && p.ansNum > 0) {
-              return (
-                <div className="flex items-center inline-flex align-middle gap-1 text-xl">
-                  <span>{p.ansInt}</span>
-                  <div className="flex flex-col items-center">
-                    <span>{p.ansNum}</span>
-                    <div className="w-8 border-b-2 border-red-600 my-1"></div>
-                    <span>{p.ansDen}</span>
-                  </div>
-                </div>
-              );
-            }
-            if (p.ansInt > 0) return <span>{p.ansInt}</span>;
-            return (
-              <div className="flex flex-col items-center inline-flex align-middle text-xl">
-                <span>{p.ansNum}</span>
-                <div className="w-8 border-b-2 border-red-600 my-1"></div>
-                <span>{p.ansDen}</span>
-              </div>
-            );
-          }
-          return <span>{p.ans}</span>;
-        }
-        return <span>{p.ans}</span>;
-      };
-
-      const handleCheck = useCallback(() => {
-        if (countdown !== null || status === 'correct') return;
-        let isCorrectAns = false, isCorrectRem = true;
-        const hasRem = problem.rem !== undefined;
-        if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) { if (!userInput) return; if (hasRem && !userInputRem) return; isCorrectAns = parseInt(userInput) === problem.ans; isCorrectRem = hasRem ? parseInt(userInputRem) === problem.rem : true; }
-        else if (problem.answerType === 'decimal') { if (!userInput) return; isCorrectAns = parseFloat(userInput) === problem.ans; }
-        else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') { if (!userInputNum || !userInputDen) return; isCorrectAns = parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen; }
-        else if (problem.answerType === 'fraction_mixed') { if (!userInputInt || !userInputNum || !userInputDen) return; isCorrectAns = parseInt(userInputInt) === problem.ansInt && parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen; }
-        else if (problem.answerType === 'length_cm') { if (!userInputCm) return; isCorrectAns = parseInt(userInputCm) === problem.ansCm; }
-        else if (problem.answerType === 'length_mm') { if (!userInputMm) return; isCorrectAns = parseInt(userInputMm) === problem.ansMm; }
-        else if (problem.answerType === 'length_cm_mm') { if (!userInputCm || !userInputMm) return; isCorrectAns = parseInt(userInputCm) === problem.ansCm && parseInt(userInputMm) === problem.ansMm; }
-        else if (problem.answerType === 'unit_composite_from_small') { if (!userInputUnit1 || !userInputUnit2) return; isCorrectAns = parseFloat(userInputUnit1) === problem.ans1 && parseFloat(userInputUnit2) === problem.ans2; }
-        else if (problem.answerType && problem.answerType.startsWith('unit_')) { if (!userInputUnit1) return; isCorrectAns = parseFloat(userInputUnit1) === problem.ans1; }
-        else if (problem.answerType === 'approx_range') { if (!userInputApprox1 || !userInputApprox2) return; isCorrectAns = parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2; }
-        else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') { if (!userInputUnit1 || !userInputUnit2) return; isCorrectAns = parseInt(userInputUnit1) === problem.ans1 && parseInt(userInputUnit2) === problem.ans2; }
-        
-        const delayTime = isWordProblem ? 3000 : 750;
-
-        if (isCorrectAns && isCorrectRem) {
-          playCorrectSound(); setStatus('correct'); const newScore = score + 1; setScore(newScore);
-          if (!isFinishedRef.current) addPoints(type, level, course.mode, course.value, 1 * level); 
-          if (course.mode === 'count' && newScore >= course.value) {
-            isFinishedRef.current = true; const finalTime = Math.floor((Date.now() - startTime) / 1000);
-            setTimeout(() => {
-              const isNew = saveRecord(type, level, 'count', course.value, finalTime);
-              let bp = isNew ? 10 * level : 0; const acb = checkAndApplyAllClearBonus(type, level); bp += acb;
-              if (bp > 0) addPoints(type, level, 'count', course.value, bp);
-              setResult({ score: newScore, timeElapsed: finalTime, mode: 'count', value: course.value, isNewRecord: isNew, earnedPoints: (newScore * level) + bp });
-              setView('result');
-            }, delayTime);
-          } else {
-            setTimeout(() => {
-              const newProb = generateProblem(type, level, problem); setProblem(newProb);
-              setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
-              setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
-              setStatus('idle'); setClearKey(Date.now()); setCurrentProblemMistakes(0);
-              setShowHint(false); // 次へ進むときにヒントリセット
-            }, delayTime);
-          }
-        } else {
-          saveMistake(type, problem); setStatus('wrong');
-          setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
-          setFocusedInput(problem.answerType==='fraction_proper'||problem.answerType==='fraction_improper'?'num':problem.answerType==='fraction_mixed'?'int':problem.answerType==='length_cm'||problem.answerType==='length_cm_mm'?'cm':problem.answerType==='length_mm'?'mm':problem.answerType==='unit_composite_from_small'||problem.answerType==='unit_large'||problem.answerType==='unit_small'||problem.answerType==='unit_small_from_composite'||problem.answerType==='clock'||problem.answerType==='clock_read'||problem.answerType==='duration'?'unit1':problem.answerType==='approx_range'?'approx1':'ans');
-          const newMistakes = mistakes + 1; setMistakes(newMistakes); setCurrentProblemMistakes(prev => prev + 1);
-          
-          const wrongDelayTime = isWordProblem ? 3000 : 500;
-          if (newMistakes >= 3) {
-            isFinishedRef.current = true;
-            setTimeout(() => { setResult({ isGameOver: true, reason: 'mistakes', earnedPoints: score * level }); setView('result'); }, wrongDelayTime);
-          } else { setTimeout(() => setStatus('idle'), wrongDelayTime); }
-        }
-      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, score, course, startTime, setResult, setView, mistakes, type, level, isWordProblem]);
-
-      useEffect(() => {
-        const newProb = generateProblem(type, level); setProblem(newProb);
-        setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
-        setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
-        setStatus('idle'); setScore(0); setCountdown(3); setStartTime(null); setNow(null); setMistakes(0); setCurrentProblemMistakes(0); setClearKey(Date.now()); isFinishedRef.current = false;
-        setShowHint(false); // ヒント初期化
-        const timer = setInterval(() => { setCountdown(prev => { if (prev <= 1) { clearInterval(timer); const t = Date.now(); setStartTime(t); setNow(t); return null; } return prev - 1; }); }, 1000);
-        return () => clearInterval(timer);
-      }, [type, level, course]);
-
-      useEffect(() => {
-        const resetIdleTimer = () => lastActionTimeRef.current = Date.now();
-        window.addEventListener('pointerdown', resetIdleTimer); window.addEventListener('keydown', resetIdleTimer); window.addEventListener('touchstart', resetIdleTimer);
-        return () => { window.removeEventListener('pointerdown', resetIdleTimer); window.removeEventListener('keydown', resetIdleTimer); window.removeEventListener('touchstart', resetIdleTimer); };
-      }, []);
-
-      useEffect(() => {
-        if (countdown !== null) return;
-        const timer = setInterval(() => { setNow(Date.now()); if (!isFinishedRef.current && Date.now() - lastActionTimeRef.current >= 5 * 60 * 1000) { isFinishedRef.current = true; setResult({ isGameOver: true, reason: 'timeout_idle', earnedPoints: 0 }); setView('result'); } }, 100);
-        return () => clearInterval(timer);
-      }, [countdown, setView, setResult]);
-
-      const elapsedSec = startTime && now ? Math.floor((now - startTime) / 1000) : 0;
-      const timeLeft = course.mode === 'time' ? Math.max(0, course.value - elapsedSec) : null;
-
-      // タイムアウト監視エフェクト
-      useEffect(() => {
-        if (course.mode === 'time' && timeLeft !== null && timeLeft <= 0 && !isFinishedRef.current) {
-          isFinishedRef.current = true;
-          if (score === 0) {
-            setResult({ isGameOver: true, reason: 'timeout_zero', earnedPoints: 0 });
-            setView('result');
-            return;
-          }
-          const isNew = saveRecord(type, level, 'time', course.value, score);
-          let bp = isNew ? 10 * level : 0; const acb = checkAndApplyAllClearBonus(type, level); bp += acb;
-          if (bp > 0) addPoints(type, level, 'time', course.value, bp);
-          setResult({ score, mode: 'time', value: course.value, isNewRecord: isNew, earnedPoints: (score * level) + bp });
-          setView('result');
-        }
-      }, [timeLeft, course.mode, score, course.value, setView, setResult, type, level]);
-
-      const handleInput = useCallback((numStr) => {
-        if (countdown !== null || status === 'correct') return;
-        if (focusedInput === 'ans') {
-          if (numStr === '.' && userInput.includes('.')) return;
-          setUserInput(prev => prev.length < 6 ? prev + numStr : prev);
-        } else if (focusedInput === 'rem') {
-          setUserInputRem(prev => prev.length < 6 ? prev + numStr : prev);
-        } else if (focusedInput === 'num') {
-          setUserInputNum(prev => prev.length < 3 ? prev + numStr : prev);
-        } else if (focusedInput === 'den') {
-          setUserInputDen(prev => prev.length < 3 ? prev + numStr : prev);
-        } else if (focusedInput === 'int') {
-          setUserInputInt(prev => prev.length < 3 ? prev + numStr : prev);
-        } else if (focusedInput === 'cm') {
-          setUserInputCm(prev => prev.length < 3 ? prev + numStr : prev);
-        } else if (focusedInput === 'mm') {
-          setUserInputMm(prev => prev.length < 2 ? prev + numStr : prev);
-        } else if (focusedInput === 'unit1') {
-          if (numStr === '.' && userInputUnit1.includes('.')) return;
-          setUserInputUnit1(prev => prev.length < 6 ? prev + numStr : prev);
-        } else if (focusedInput === 'unit2') {
-          if (numStr === '.' && userInputUnit2.includes('.')) return;
-          setUserInputUnit2(prev => prev.length < 4 ? prev + numStr : prev);
-        } else if (focusedInput === 'approx1') {
-          setUserInputApprox1(prev => prev.length < 6 ? prev + numStr : prev);
-        } else if (focusedInput === 'approx2') {
-          setUserInputApprox2(prev => prev.length < 6 ? prev + numStr : prev);
-        }
-      }, [status, countdown, focusedInput, userInput, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2]);
-
-      const handleDelete = useCallback(() => {
-        if (countdown !== null || status === 'correct') return;
-        if (focusedInput === 'ans') setUserInput(prev => prev.slice(0, -1));
-        else if (focusedInput === 'rem') setUserInputRem(prev => prev.slice(0, -1));
-        else if (focusedInput === 'num') setUserInputNum(prev => prev.slice(0, -1));
-        else if (focusedInput === 'den') setUserInputDen(prev => prev.slice(0, -1));
-        else if (focusedInput === 'int') setUserInputInt(prev => prev.slice(0, -1));
-        else if (focusedInput === 'cm') setUserInputCm(prev => prev.slice(0, -1));
-        else if (focusedInput === 'mm') setUserInputMm(prev => prev.slice(0, -1));
-        else if (focusedInput === 'unit1') setUserInputUnit1(prev => prev.slice(0, -1));
-        else if (focusedInput === 'unit2') setUserInputUnit2(prev => prev.slice(0, -1));
-        else if (focusedInput === 'approx1') setUserInputApprox1(prev => prev.slice(0, -1));
-        else if (focusedInput === 'approx2') setUserInputApprox2(prev => prev.slice(0, -1));
-      }, [status, countdown, focusedInput]);
-
-      // --- キーボード入力と「正解時の即時自動ピンポンクリア判定」システム ---
-      useEffect(() => {
-        if (countdown === null && status !== 'correct') {
-          const hasRem = problem.rem !== undefined;
-          if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
-            if (hasRem) {
-              if (focusedInput === 'ans' && userInput && parseInt(userInput) === problem.ans) {
-                setFocusedInput('rem');
-              }
-              if (userInput && userInputRem && parseInt(userInput) === problem.ans && parseInt(userInputRem) === problem.rem) {
-                handleCheck();
-              }
-            } else {
-              if (userInput && parseInt(userInput) === problem.ans) {
-                handleCheck();
-              }
-            }
-          } else if (problem.answerType === 'decimal') {
-             if (userInput && parseFloat(userInput) === problem.ans) {
-               handleCheck();
-             }
-          } else if (problem.answerType === 'length_cm_mm') {
-             if (focusedInput === 'cm' && userInputCm && parseInt(userInputCm) === problem.ansCm) {
-               setFocusedInput('mm');
-             }
-             if (userInputCm && userInputMm && parseInt(userInputCm) === problem.ansCm && parseInt(userInputMm) === problem.ansMm) {
-               handleCheck();
-             }
-          } else if (problem.answerType === 'length_cm') {
-             if (userInputCm && parseInt(userInputCm) === problem.ansCm) {
-               handleCheck();
-             }
-          } else if (problem.answerType === 'length_mm') {
-             if (userInputMm && parseInt(userInputMm) === problem.ansMm) {
-               handleCheck();
-             }
-          } else if (problem.answerType === 'unit_composite_from_small') {
-             if (focusedInput === 'unit1' && userInputUnit1 && parseFloat(userInputUnit1) === problem.ans1) {
-               setFocusedInput('unit2');
-             }
-             if (userInputUnit1 && userInputUnit2 && parseFloat(userInputUnit1) === problem.ans1 && parseFloat(userInputUnit2) === problem.ans2) {
-               handleCheck();
-             }
-          } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
-             if (userInputUnit1 && parseFloat(userInputUnit1) === problem.ans1) {
-               handleCheck();
-             }
-          } else if (problem.answerType === 'approx_range') {
-             if (focusedInput === 'approx1' && userInputApprox1 && parseInt(userInputApprox1) === problem.ans1) {
-               setFocusedInput('approx2');
-             }
-             if (userInputApprox1 && userInputApprox2 && parseInt(userInputApprox1) === problem.ans1 && parseInt(userInputApprox2) === problem.ans2) {
-               handleCheck();
-             }
-          } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
-             if (focusedInput === 'unit1' && userInputUnit1 && parseInt(userInputUnit1) === problem.ans1) {
-               setFocusedInput('unit2');
-             }
-             if (userInputUnit1 && userInputUnit2 && parseInt(userInputUnit1) === problem.ans1 && parseInt(userInputUnit2) === problem.ans2) {
-               handleCheck();
-             }
-          }
-
-          // 3桁以上入力時の自動不正解判定
-          let shouldAutoCheckWrong = false;
-          const checkWrong = (val, correct) => {
-            if (!val || val.length < 3) return false;
-            const cStr = String(correct);
-            if (val === cStr) return false; 
-            if (cStr.startsWith(val)) return false; 
-            return true;
-          };
-
-          if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) {
-            if (focusedInput === 'ans' && checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'rem' && checkWrong(userInputRem, problem.rem)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'decimal') {
-            if (checkWrong(userInput, problem.ans)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') {
-            if (focusedInput === 'num' && checkWrong(userInputNum, problem.ansNum)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'den' && checkWrong(userInputDen, problem.ansDen)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'fraction_mixed') {
-            if (focusedInput === 'int' && checkWrong(userInputInt, problem.ansInt)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'num' && checkWrong(userInputNum, problem.ansNum)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'den' && checkWrong(userInputDen, problem.ansDen)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'length_cm') {
-            if (checkWrong(userInputCm, problem.ansCm)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'length_mm') {
-            if (checkWrong(userInputMm, problem.ansMm)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'length_cm_mm') {
-            if (focusedInput === 'cm' && checkWrong(userInputCm, problem.ansCm)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'mm' && checkWrong(userInputMm, problem.ansMm)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'unit_composite_from_small') {
-            if (focusedInput === 'unit1' && checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'unit2' && checkWrong(userInputUnit2, problem.ans2)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType && problem.answerType.startsWith('unit_')) {
-            if (checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'approx_range') {
-            if (focusedInput === 'approx1' && checkWrong(userInputApprox1, problem.ans1)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'approx2' && checkWrong(userInputApprox2, problem.ans2)) shouldAutoCheckWrong = true;
-          } else if (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') {
-            if (focusedInput === 'unit1' && checkWrong(userInputUnit1, problem.ans1)) shouldAutoCheckWrong = true;
-            if (focusedInput === 'unit2' && checkWrong(userInputUnit2, problem.ans2)) shouldAutoCheckWrong = true;
-          }
-
-          if (shouldAutoCheckWrong) {
-            handleCheck();
-          }
-        }
-      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, handleCheck, countdown, focusedInput, isLength, isUnit, isWordProblem, isApprox, isClock]);
-
-      useEffect(() => {
-        if (countdown !== null) return;
-        const handleKeyDown = (e) => {
-          if (e.key >= '0' && e.key <= '9') {
-            handleInput(e.key);
-          } else if (e.key === '.') {
-            handleInput('.');
-          } else if (e.key === 'Backspace') {
-            handleDelete();
-          } else if (e.key === 'Enter') {
-            handleCheck();
-          }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-      }, [handleInput, handleDelete, handleCheck, countdown]);
-
-      const renderNumpad = () => {
-        const canSubmit = !(countdown !== null || (
-          (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) ? (!userInput || (problem.rem !== undefined && !userInputRem)) :
-          problem.answerType === 'decimal' ? !userInput :
-          (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') ? (!userInputNum || !userInputDen) :
-          problem.answerType === 'fraction_mixed' ? (!userInputInt || !userInputNum || !userInputDen) :
-          problem.answerType === 'length_cm' ? !userInputCm :
-          problem.answerType === 'length_mm' ? !userInputMm :
-          problem.answerType === 'length_cm_mm' ? (!userInputCm || !userInputMm) :
-          (problem.answerType === 'unit_large' || problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite') ? !userInputUnit1 :
-          problem.answerType === 'unit_composite_from_small' ? (!userInputUnit1 || !userInputUnit2) :
-          problem.answerType === 'approx_range' ? (!userInputApprox1 || !userInputApprox2) :
-          (problem.answerType === 'clock' || problem.answerType === 'clock_read' || problem.answerType === 'duration') ? (!userInputUnit1 || !userInputUnit2) :
-          true
-        ));
-
-        return (
-          <div className={`w-full ${isNumberLine || isLength || isUnit || isApprox || isClock ? 'max-w-xl' : 'max-w-md'} flex flex-col gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2 relative z-10`}>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                <button
-                  key={num}
-                  onClick={() => handleInput(num.toString())}
-                  disabled={countdown !== null}
-                  className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
-                >
-                  {num}
-                </button>
-              ))}
-              <button
-                onClick={handleDelete}
-                disabled={countdown !== null}
-                className={`bg-gray-200 text-sm sm:text-xl md:text-2xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#d1d5db] active:shadow-[0_0px_0_#d1d5db] active:translate-y-[4px]'}`}
-              >
-                けす
-              </button>
-              <button
-                onClick={() => handleInput('0')}
-                disabled={countdown !== null}
-                className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'}`}
-              >
-                0
-              </button>
-              <button
-                onClick={() => handleInput('.')}
-                disabled={countdown !== null || (problem.answerType !== 'decimal' && !problem.allowDecimal)}
-                className={`bg-white text-xl sm:text-3xl md:text-4xl font-bold text-gray-700 py-3 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl transition-all ${countdown !== null || (problem.answerType !== 'decimal' && !problem.allowDecimal) ? 'opacity-50 cursor-not-allowed' : 'shadow-[0_4px_0_#e5e7eb] active:shadow-[0_0px_0_#e5e7eb] active:translate-y-[4px]'} ${problem.answerType !== 'decimal' && !problem.allowDecimal ? 'invisible' : ''}`}
-              >
-                .
-              </button>
-            </div>
-            <button
-              onClick={handleCheck}
-              disabled={!canSubmit}
-              className={`text-lg sm:text-2xl md:text-3xl font-bold py-4 sm:py-6 md:py-8 rounded-xl sm:rounded-2xl transition-all w-full mt-2 ${
-                !canSubmit ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
-            >
-              こたえる
-            </button>
-          </div>
-        );
-      };
-
-      return (
-        <div className={`flex flex-col min-h-screen ${theme.bg} font-sans`}>
-          <div className="flex justify-between items-center p-2 sm:p-4 bg-white shadow-sm sticky top-0 z-[100] shrink-0">
-            <button 
-              onClick={() => setView('course')}
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-bold px-2 sm:px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 inline-block" /> <span className="hidden sm:inline">もどる</span>
-            </button>
-            
-            <div className="text-lg md:text-xl font-bold text-gray-700 hidden md:block">
-              {theme.title} <span className="text-sm text-gray-500 ml-2">Lv.{level}</span>
-            </div>
-            
-            <div className="flex items-center gap-2 md:gap-4">
-              <div className="flex items-center gap-0.5 text-red-400">
-                {[...Array(3)].map((_, i) => (
-                  <Heart key={i} className={`w-5 h-5 md:w-6 md:h-6 ${i < 3 - mistakes ? 'fill-current' : 'text-gray-200'} inline-block`} />
-                ))}
-              </div>
-              {course.mode === 'time' && (
-                <div className={`text-xl font-bold ${timeLeft !== null && timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-gray-600'}`}>
-                  ⏳ {timeLeft !== null ? `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}` : '0:00'}
-                </div>
-              )}
-              {course.mode === 'count' && (
-                 <div className="text-xl font-bold text-gray-600">
-                   ⏳ {Math.floor(elapsedSec / 60)}:{(elapsedSec % 60).toString().padStart(2, '0')}
-                 </div>
-              )}
-              <div className="flex items-center gap-1 font-bold text-yellow-500 text-xl bg-yellow-50 px-3 py-1 rounded-full">
-                <Star className="w-6 h-6 fill-current inline-block" /> 
-                {course.mode === 'count' ? `${score}/${course.value}` : score}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 relative flex flex-col w-full">
-            {countdown !== null && (
-              <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center">
-                <div key={countdown} className="text-8xl sm:text-9xl md:text-[200px] font-extrabold text-orange-500 animate-in zoom-in duration-300">
-                  {countdown === 3 ? '３' : countdown === 2 ? '２' : countdown === 1 ? '１' : countdown}
-                </div>
-                <div className="text-xl sm:text-2xl md:text-3xl mt-4 sm:mt-8 font-bold text-gray-600 animate-pulse">
-                  じゅんびは いいかな？
-                </div>
-              </div>
-            )}
-
-            <div className={`w-full flex-1 bg-white sm:rounded-t-3xl shadow-lg relative flex flex-col`}>
-              
-              {/* 文章問題・がい数の場合の上部テキスト表示エリア */}
-              {(isWordProblem || isApprox) && (
-                <div className={`w-full p-4 sm:p-8 z-20 shrink-0 border-b-4 ${isWordProblem ? 'bg-indigo-50 border-indigo-100' : 'bg-orange-50 border-orange-100'}`}>
-                  <div className={`text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed whitespace-pre-wrap text-left w-full max-w-4xl mx-auto border-l-4 pl-4 bg-white p-4 rounded-r-xl shadow-sm ${isWordProblem ? 'border-indigo-400' : 'border-orange-400'}`}>
-                    {problem.text}
-                  </div>
-                </div>
-              )}
-
-              <div className="w-full flex flex-row relative min-h-[1400px]">
-                {/* 左側: 横式の計算問題と答えの入力エリア・テンキー */}
-                <div className={`flex flex-col items-center justify-start p-1 sm:p-4 order-1 bg-white z-10 pb-24 ${hasRightPanel ? 'w-1/2 border-r-2 border-gray-100' : 'w-full'}`}>
-                  <div className="sticky top-[80px] flex flex-col items-center w-full">
-                    
-                    {status === 'correct' && (
-                      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
-                        <Circle className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-green-500/80 inline-block" strokeWidth={3} />
-                      </div>
-                    )}
-                    {status === 'wrong' && (
-                      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 animate-in zoom-in duration-200 pointer-events-none">
-                        <X className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 text-red-500/80 inline-block" strokeWidth={3} />
-                      </div>
-                    )}
-
-                    {isClock && (
-                      <div className="w-full flex flex-col items-center p-2">
-                         <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{problem.text}</span>
-                         
-                         {/* ヒントボタン */}
-                         <div className="mb-4">
-                           <button 
-                             onClick={() => setShowHint(prev => !prev)} 
-                             className={`px-6 py-2.5 rounded-2xl font-bold shadow-sm border transition-all flex items-center gap-2 ${
-                               showHint 
-                                 ? 'bg-amber-400 text-white border-amber-500 hover:bg-amber-500' 
-                                 : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
-                             }`}
-                           >
-                             <span>💡</span> <span>{showHint ? 'ヒントを かくす' : 'ヒントを みる'}</span>
-                           </button>
-                         </div>
-
-                         {/* ヒントがオンの時のみ、時計または数直線を描画 */}
-                         {showHint && (
-                           <div className="w-full flex justify-center animate-in fade-in zoom-in duration-200">
-                             {problem.answerType === 'clock_read' ? (
-                               <ClockSVG h={problem.h1} m={problem.m1} size={150} />
-                             ) : (
-                               <TimeLineSVG 
-                                 h1={problem.h1} 
-                                 m1={problem.m1} 
-                                 ansH={problem.ans1} 
-                                 ansM={problem.ans2} 
-                                 dm={problem.dm} 
-                                 dh={problem.dh} 
-                                 isAfter={problem.isAfter} 
-                                 isDuration={problem.answerType === 'duration'} 
-                                 h2={problem.h2} 
-                                 m2={problem.m2} 
-                               />
-                             )}
-                           </div>
-                         )}
-                      </div>
-                    )}
-
-                    {!isClock && !hasRightPanel ? (
-                      <div className="w-full text-2xl font-bold text-center mt-4 whitespace-pre-wrap">{problem.text || (problem.op==='長さ'?<RulerSVG totalMm={problem.ansTotalMm} maxCm={problem.maxCm}/>:null)}</div>
-                    ) : !isClock ? (
-                      <div className="text-5xl md:text-7xl font-bold text-center mt-8 tracking-widest">{problem.n1} {problem.op} {problem.n2} = </div>
-                    ) : null}
-
-                    <div className="flex justify-center items-end gap-2 mt-8">
-                      {problem.answerType === 'integer' || problem.answerType === 'decimal' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock) ? (
-                         <div onClick={() => setFocusedInput('ans')} className={`w-32 h-24 bg-gray-100 rounded-2xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'ans' ? 'border-orange-400' : ''}`}>{userInput || '?'}</div>
-                      ) : problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper' ? (
-                         <div className="flex flex-col items-center gap-2">
-                           <div onClick={() => setFocusedInput('num')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'num' ? 'border-orange-400' : ''}`}>{userInputNum || '?'}</div>
-                           <div className="w-28 h-1.5 bg-gray-800 rounded-full"></div>
-                           <div onClick={() => setFocusedInput('den')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'den' ? 'border-orange-400' : ''}`}>{userInputDen || '?'}</div>
-                         </div>
-                      ) : problem.answerType === 'fraction_mixed' ? (
-                         <div className="flex items-center gap-3">
-                           <div onClick={() => setFocusedInput('int')} className={`w-24 h-32 bg-gray-100 rounded-xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'int' ? 'border-orange-400' : ''}`}>{userInputInt || '?'}</div>
-                           <div className="flex flex-col items-center gap-2">
-                             <div onClick={() => setFocusedInput('num')} className={`w-20 h-14 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'num' ? 'border-orange-400' : ''}`}>{userInputNum || '?'}</div>
-                             <div className="w-24 h-1.5 bg-gray-800 rounded-full"></div>
-                             <div onClick={() => setFocusedInput('den')} className={`w-20 h-14 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'den' ? 'border-orange-400' : ''}`}>{userInputDen || '?'}</div>
-                           </div>
-                         </div>
-                      ) : problem.answerType === 'length_cm' ? (
-                         <div className="flex items-center gap-2">
-                           <div onClick={() => setFocusedInput('cm')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'cm' ? 'border-orange-400' : ''}`}>{userInputCm || '?'}</div>
-                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">cm</span>
-                         </div>
-                      ) : problem.answerType === 'length_mm' ? (
-                         <div className="flex items-center gap-2">
-                           <div onClick={() => setFocusedInput('mm')} className={`cursor-pointer w-24 h-16 sm:w-32 sm:h-24 bg-gray-100 rounded-xl flex items-center justify-center text-4xl sm:text-5xl font-bold shadow-inner ${focusedInput === 'mm' ? 'ring-4 ring-orange-400' : ''} ${userInputMm ? 'text-gray-800' : 'text-gray-300'} border-4 ${status === 'wrong' ? 'border-red-400 bg-red-50 text-red-500' : 'border-gray-200'}`}>{userInputMm || '?'}</div>
-                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">mm</span>
-                         </div>
-                      ) : problem.answerType === 'length_cm_mm' ? (
-                         <div className="flex items-center gap-3">
-                           <div onClick={() => setFocusedInput('cm')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'cm' ? 'border-orange-400' : ''}`}>{userInputCm || '?'}</div>
-                           <span className="text-xl font-bold">cm</span>
-                           <div onClick={() => setFocusedInput('mm')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'mm' ? 'border-orange-400' : ''}`}>{userInputMm || '?'}</div>
-                           <span className="text-xl font-bold">mm</span>
-                         </div>
-                      ) : problem.answerType === 'unit_large' ? (
-                         <div className="flex items-center gap-2">
-                           <div onClick={() => setFocusedInput('unit1')} className={`w-32 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
-                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitLarge}</span>
-                         </div>
-                      ) : problem.answerType === 'unit_small' || problem.answerType === 'unit_small_from_composite' ? (
-                         <div className="flex items-center gap-2">
-                           <div onClick={() => setFocusedInput('unit1')} className={`w-32 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-4xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
-                           <span className="text-2xl sm:text-4xl font-bold text-gray-800">{problem.unitSmall}</span>
-                         </div>
-                      ) : problem.answerType === 'unit_composite_from_small' ? (
-                         <div className="flex items-center gap-3">
-                           <div onClick={() => setFocusedInput('unit1')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
-                           <span className="text-xl font-bold">{problem.unitLarge}</span>
-                           <div onClick={() => setFocusedInput('unit2')} className={`w-20 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
-                           <span className="text-xl font-bold">{problem.unitSmall}</span>
-                         </div>
-                      ) : problem.answerType === 'approx_range' ? (
-                         <div className="flex items-center gap-3">
-                           <div onClick={() => setFocusedInput('approx1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'approx1' ? 'border-orange-400' : ''}`}>{userInputApprox1 || '?'}</div>
-                           <span className="text-lg font-bold">以上</span>
-                           <div onClick={() => setFocusedInput('approx2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'approx2' ? 'border-orange-400' : ''}`}>{userInputApprox2 || '?'}</div>
-                           <span className="text-lg font-bold">未満</span>
-                         </div>
-                      ) : problem.answerType === 'clock' || problem.answerType === 'clock_read' ? (
-                         <div className="flex items-center gap-3">
-                           <div onClick={() => setFocusedInput('unit1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
-                           <span className="text-xl font-bold">時</span>
-                           <div onClick={() => setFocusedInput('unit2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
-                           <span className="text-xl font-bold">分</span>
-                         </div>
-                      ) : problem.answerType === 'duration' ? (
-                         <div className="flex items-center gap-3">
-                           <div onClick={() => setFocusedInput('unit1')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit1' ? 'border-orange-400' : ''}`}>{userInputUnit1 || '?'}</div>
-                           <span className="text-xl font-bold">時間</span>
-                           <div onClick={() => setFocusedInput('unit2')} className={`w-24 h-16 bg-gray-100 rounded-xl flex items-center justify-center text-3xl font-bold border-4 ${focusedInput === 'unit2' ? 'border-orange-400' : ''}`}>{userInputUnit2 || '?'}</div>
-                           <span className="text-xl font-bold">分</span>
-                         </div>
-                      ) : null}
-
-                      {problem.rem !== undefined && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock && (
-                         <div className="flex items-center gap-2">
-                           <span className="text-2xl font-bold">あまり</span>
-                           <div onClick={() => setFocusedInput('rem')} className={`w-24 h-24 bg-gray-100 rounded-2xl flex items-center justify-center text-5xl font-bold border-4 ${focusedInput === 'rem' ? 'border-orange-400' : ''}`}>{userInputRem || '?'}</div>
-                         </div>
-                      )}
-                    </div>
-
-                    {currentProblemMistakes >= 2 && status !== 'correct' && (
-                      <div className="mt-6 p-4 bg-red-50 border-4 border-red-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
-                        <span className="text-sm md:text-base font-bold text-red-800 mb-2 block">せいかいは コレだよ！ かきうつしてね！</span>
-                        <div className="text-3xl md:text-4xl font-extrabold text-red-600 tracking-widest flex justify-center items-center">
-                          {renderCorrectAnswer(problem)}
-                        </div>
-                      </div>
-                    )}
-
-                    {isWordProblem && (status === 'correct' || status === 'wrong') && problem.equation && (
-                      <div className="mt-6 p-4 bg-yellow-50 border-4 border-yellow-300 rounded-2xl w-full max-w-md animate-in zoom-in text-center shadow-sm">
-                        <span className="text-sm md:text-base font-bold text-yellow-800 mb-1 block">こたえを だすための 式</span>
-                        <span className="text-3xl md:text-4xl font-extrabold text-gray-800 tracking-widest">{problem.equation}</span>
-                      </div>
-                    )}
-
-                    {/* テンキー */}
-                    <div className="mt-4 sm:mt-6 w-full flex justify-center pb-4">
-                      {renderNumpad()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 右側: 筆算表示と手書きの書き込みエリア */}
-                {hasRightPanel && (
-                  <div className="w-1/2 bg-amber-50 order-2 relative">
-                    {/* ヘッダー部分を絶対配置にし、背面にキャンバスを広げる */}
-                    <div className="sticky top-[80px] left-0 w-full flex justify-between items-center p-2 sm:p-4 z-20 pointer-events-none">
-                      <span className="text-xs sm:text-sm md:text-base font-bold text-amber-700/80 pl-1 sm:pl-2 drop-shadow-sm bg-amber-100/80 px-2 py-1 rounded">かきこみ</span>
-                      <div className="flex gap-1 sm:gap-2 pointer-events-auto">
-                        <button 
-                          onClick={() => canvasRef.current?.undo()}
-                          className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white/90 hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200 backdrop-blur-sm"
-                          title="１つもどす"
-                        >
-                          <Undo className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">もどす</span>
-                        </button>
-                        <button 
-                          onClick={() => canvasRef.current?.clear()}
-                          className="flex items-center gap-1 px-2 py-1 sm:px-4 sm:py-2 bg-white/90 hover:bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm border border-amber-200 backdrop-blur-sm"
-                          title="かきこみをすべてけす"
-                        >
-                          <X className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline-block" /> <span className="hidden sm:inline">けす</span>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                      <GridBackground />
-                      <div className="sticky top-[120px]">
-                        <VerticalMath problem={problem} />
-                      </div>
-                    </div>
-                    <DrawCanvas ref={canvasRef} clearKey={clearKey} />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    const ResultView = ({ result, type, level, setView }) => {
-      const [showKusudama, setShowKusudama] = useState(result.isNewRecord && !result.isGameOver);
-      const theme = getTheme(type);
-      useEffect(() => { if (result.isNewRecord && !result.isGameOver) { const audio = new Audio('https://actions.google.com/sounds/v1/crowds/light_applause.ogg'); audio.volume = 0.5; audio.play().catch(e => console.log('Audio error:', e)); const timer = setTimeout(() => setShowKusudama(false), 8000); return () => { clearTimeout(timer); audio.pause(); }; } }, [result.isNewRecord, result.isGameOver]);
-
-      return (
-        <div className={`flex flex-col items-center justify-center min-h-screen ${theme.bg} p-6 animate-in fade-in duration-500`}>
-          {showKusudama && <Kusudama onClick={() => setShowKusudama(false)} />}
-          <div className={`relative bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg text-center border-4 ${theme.border}`}>
-            {result.isGameOver ? (
-              <React.Fragment>
-                <div className="flex justify-center mb-4">
-                  <X className="w-24 h-24 text-red-500 inline-block" strokeWidth={3} />
-                </div>
-                <h2 className="text-3xl font-extrabold text-red-500 mb-2">ざんねん…</h2>
-                <p className="text-xl font-bold text-gray-700 mb-6">
-                  {result.reason === 'timeout_zero' ? 'じかんぎれに なっちゃったね' : 
-                   result.reason === 'timeout_idle' ? 'おやすみ中かな？' :
-                   '3かい まちがえちゃったね'}
-                </p>
-                <p className="text-lg text-gray-600">つぎは がんばろう！</p>
-              </React.Fragment>
-            ) : (
-              <React.Fragment>
-                {result.isNewRecord && (
-                  <div className="absolute -top-6 -right-4 md:-top-8 md:-right-8 bg-gradient-to-r from-pink-500 to-red-500 text-white font-extrabold text-xl md:text-2xl py-2 px-6 rounded-full shadow-lg transform rotate-12 animate-in zoom-in duration-500 delay-1000 z-10">
-                    🎊 しんきろく！
-                  </div>
-                )}
-                <Award className={`w-20 h-20 ${theme.text} mx-auto mb-4`} />
-                <h2 className={`text-3xl font-extrabold ${theme.text} mb-2`}>おつかれさま！</h2>
-                <div className="bg-gray-50 rounded-2xl p-6 mb-6">
-                  <p className="text-2xl font-bold mb-4">{result.mode==='count'?`${result.value}問 せいかい！`:`${result.score} 問`}</p>
-                  <p className="text-4xl font-extrabold">{result.mode==='count'?`${Math.floor(result.timeElapsed/60)}分${result.timeElapsed%60}秒`:`${result.value/60}分間`}</p>
-                </div>
-              </React.Fragment>
-            )}
-            
-            {result.earnedPoints > 0 && (
-              <div className="flex justify-center mb-6 animate-in slide-in-from-bottom-4 duration-500 delay-300">
-                 <div className="bg-yellow-100 border-2 border-yellow-300 text-yellow-700 px-6 py-2 rounded-full font-bold text-lg md:text-xl flex items-center gap-2 shadow-sm">
-                   <Star className="w-6 h-6 fill-yellow-500 text-yellow-500 inline-block" />
-                   {result.earnedPoints} pt ゲット！
-                 </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-4">
-              <button onClick={() => setView('quiz')} className={`relative ${theme.btn || 'bg-blue-500'} text-white text-xl font-bold py-4 rounded-2xl active:translate-y-[6px]`}>もう1回やる</button>
-              <button onClick={() => setView('course')} className="bg-gray-200 text-gray-700 text-lg font-bold py-4 rounded-2xl shadow-[0_6px_0_#9ca3af] active:translate-y-[6px] flex items-center justify-center gap-2">もどる</button>
-            </div>
-          </div>
-        </div>
-      );
-    };
-
     const PrintView = ({ setView }) => {
       const [grade, setGrade] = useState(1);
       const [unit, setUnit] = useState('add');
@@ -2242,34 +2530,16 @@
           const printContent = document.getElementById('print-area').innerHTML;
           const printWindow = window.open('', '_blank');
           if (printWindow) {
-            printWindow.document.write(`
-              <!DOCTYPE html>
-              <html>
-                <head>
-                  <title>プリント印刷 - さんすうドリル</title>
-                  <script src="https://cdn.tailwindcss.com"><\/script>
-                  <style>
-                    body { font-family: sans-serif; background-color: white; }
-                    @media print {
-                      @page { margin: 10mm; }
-                      .page-break { page-break-before: always; }
-                    }
-                    .page-break { page-break-before: always; }
-                  </style>
-                </head>
-                <body>
-                  <div style="max-width: 210mm; margin: 0 auto; color: black; padding: 20px;">
-                    ` + printContent + `
-                  </div>
-                  <script>
-                    setTimeout(() => {
-                      window.print();
-                      window.close();
-                    }, 1000);
-                  <\/script>
-                </body>
-              </html>
-            `);
+            printWindow.document.write(
+              '<!DOCTYPE html><html><head><title>プリント印刷 - さんすうドリル</title>' +
+              '<script src="https://cdn.tailwindcss.com"><' + '/script>' +
+              '<style>body { font-family: sans-serif; background-color: white; } @media print { @page { margin: 10mm; } .page-break { page-break-before: always; } } .page-break { page-break-before: always; } </style>' +
+              '</head><body><div style="max-width: 210mm; margin: 0 auto; color: black; padding: 20px;">' +
+              printContent +
+              '</div><' + 'script>' +
+              'setTimeout(() => { window.print(); window.close(); }, 1000);' +
+              '<' + '/script></body></html>'
+            );
             printWindow.document.close();
             return; 
           }
@@ -2474,7 +2744,7 @@
                                     )
                                 ) : (
                                     <text x={x} y="140" textAnchor="middle" fontSize={label === '?' ? "48" : "32"} fontWeight="bold" fill="#000">
-                                      {label === '?' ? '(   )' : label}
+                                      {label === '?' ? '(　　)' : label}
                                     </text>
                                 )}
                               </g>
@@ -2513,15 +2783,16 @@
       const [view, setView] = useState('home');
       const [type, setType] = useState('add');
       const [level, setLevel] = useState(1);
+      const [isEscalation, setIsEscalation] = useState(false);
       const [course, setCourse] = useState({ mode: 'count', value: 10 });
       const [result, setResult] = useState(null);
 
       return (
         <div className="min-h-screen bg-gray-50 selection:bg-yellow-200 overflow-x-hidden">
           {view === 'home' && <HomeView setType={setType} setView={setView} />}
-          {view === 'level' && <LevelView type={type} setView={setView} setLevel={setLevel} />}
+          {view === 'level' && <LevelView type={type} setView={setView} setLevel={setLevel} setIsEscalation={setIsEscalation} setCourse={setCourse} />}
           {view === 'course' && <CourseView type={type} level={level} setView={setView} setCourse={setCourse} />}
-          {view === 'quiz' && <QuizView type={type} level={level} course={course} setView={setView} setResult={setResult} />}
+          {view === 'quiz' && <QuizView type={type} level={level} course={course} setView={setView} setResult={setResult} isEscalation={isEscalation} />}
           {view === 'result' && <ResultView result={result} type={type} level={level} setView={setView} />}
           {view === 'records' && <RecordsView setView={setView} />}
           {view === 'print' && <PrintView setView={setView} />}
