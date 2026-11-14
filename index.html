@@ -704,9 +704,29 @@
       }
     };
 
+    // 問題の中身をまとめて比較するための署名
+    // （長さ・時刻・分数の数直線など、text や ans を持たない問題でも比較できるようにする）
+    const problemSignature = (p) => JSON.stringify([
+      p.op, p.text, p.n1, p.n2, p.ans, p.rem,
+      p.ans1, p.ans2, p.ansNum, p.ansDen, p.ansInt,
+      p.ansCm, p.ansMm, p.missingIndex, p.labels,
+      p.h1, p.m1, p.h2, p.m2, p.answerType
+    ]);
+
+    // 【フリーズ修正】
+    // 以前は `newProblem.text === prevProblem.text && newProblem.ans === prevProblem.ans` を
+    // do...while で判定していたため、text/ans を持たない問題(長さ等)で
+    // `undefined === undefined` が常に true になり、無限ループしていた。
+    // 署名比較に変え、さらに試行回数の上限を設けて無限ループを防ぐ。
     const generateProblem = (type, level, prevProblem = null) => {
-      let newProblem;
-      do { newProblem = generateSingleProblemLocal(type, level); } while (prevProblem && newProblem.text === prevProblem.text && newProblem.ans === prevProblem.ans);
+      let newProblem = generateSingleProblemLocal(type, level);
+      if (!prevProblem) return newProblem;
+
+      const prevSig = problemSignature(prevProblem);
+      for (let i = 0; i < 30; i++) {
+        if (problemSignature(newProblem) !== prevSig) break;
+        newProblem = generateSingleProblemLocal(type, level);
+      }
       return newProblem;
     };
 
