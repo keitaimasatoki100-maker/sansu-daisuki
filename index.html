@@ -379,6 +379,8 @@
         key = `unit_${problem.answerType}_${problem.q_total_small || problem.q_total_cm}_${problem.q_large || problem.q_m}_${problem.q_small || problem.q_cm}_${problem.unitType || 'length'}`;
       } else if (problem.op === '文章問題') {
         key = `word_${problem.ans}_${problem.text.length}`;
+      } else if (problem.op === '分数') {
+        key = `frac_${problem.key || problem.text}`;
       } else if (problem.op === 'がい数') {
         if (problem.answerType === 'approx_range') {
           key = `approx_range_${problem.ans1}_${problem.ans2}`;
@@ -400,12 +402,209 @@
           q_large: problem.q_large, q_small: problem.q_small, q_total_small: problem.q_total_small, 
           ans1: problem.ans1, ans2: problem.ans2,
           unitType: problem.unitType, unitLarge: problem.unitLarge, unitSmall: problem.unitSmall,
-          text: problem.text, equation: problem.equation,
+          text: plainFrac(problem.recText || problem.text), equation: problem.equation,
           count: 0 
         };
       }
       mistakes[type][key].count += 1;
       localStorage.setItem('sansu_mistakes', JSON.stringify(mistakes));
+    };
+
+    // ===== 分数ブロック用 問題生成 =====
+    const FR_LABELS = ['ア', 'イ', 'ウ', 'エ', 'オ', 'カ'];
+    const rInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+    const rPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const rShuffle = (arr) => { const b = [...arr]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    const gcdF = (a, b) => (b === 0 ? a : gcdF(b, a % b));
+    const fracTxt = (n, d) => `⟦${n}|${d}⟧`; // 画面では縦書きの分数(FracText)で表示する
+    const plainFrac = (t) => String(t).replace(/⟦([^|⟧]*)\|([^⟧]*)⟧/g, '$1/$2');
+    const sameVal = (n1, d1, n2, d2) => n1 * d2 === n2 * d1;
+    const fracOpt = (n, d, correct) => ({ kind: 'frac', n, d, correct });
+
+    const equalCuts = (d) => Array.from({ length: d + 1 }).map((_, i) => i / d);
+    const unequalCuts = (d) => {
+      let w = null;
+      for (let t = 0; t < 50; t++) {
+        const c = Array.from({ length: d }).map(() => 0.4 + Math.random() * 1.6);
+        if (Math.max(...c) / Math.min(...c) >= 2) { w = c; break; }
+      }
+      if (!w) w = Array.from({ length: d }).map((_, i) => (i === 0 ? 3 : 1));
+      const s = w.reduce((a, b) => a + b, 0);
+      let acc = 0;
+      const cuts = [0, ...w.map(x => { acc += x / s; return acc; })];
+      cuts[d] = 1;
+      return cuts;
+    };
+
+    // 選択肢を並べ替えて ア・イ・ウ… を付け、正解IDを決める
+    const finishFrac = (base, raws, cols) => {
+      const options = rShuffle(raws).map((o, i) => ({ ...o, id: FR_LABELS[i] }));
+      const correctIds = options.filter(o => o.correct).map(o => o.id);
+      const optSummary = options.some(o => o.kind === 'frac') ? `（${raws.map(o => `${o.n}/${o.d}`).join('、')}）` : '';
+      return {
+        op: '分数', n1: 0, n2: 0, ...base,
+        options, correctIds, answerText: correctIds.join('、'), optionCols: cols,
+        key: base.text + (optSummary || ''),
+        recText: plainFrac(base.text).replace(/\n/g, ' ') + optSummary
+      };
+    };
+
+    const generateFractionProblem = (level) => {
+      // ---------- レベル1: 分数を正しく図示したものを選ぶ ----------
+      if (level === 1) {
+        const d = rInt(2, 8); const n = rInt(1, d - 1);
+        const shape = rPick(['bar', 'circle']);
+        const mk = (cuts, filled, correct) => ({ kind: 'shape', shape, cuts, filled, correct });
+        const raws = [mk(equalCuts(d), n, true), mk(unequalCuts(d), n, false)];
+        const seen = new Set([`e_${d}_${n}`, `u_${d}_${n}`]);
+        let guard = 0;
+        while (raws.length < 4 && guard++ < 60) {
+          const r = Math.random();
+          if (r < 0.4) {
+            const pool = []; for (let x = 1; x <= d; x++) if (x !== n) pool.push(x);
+            const n2 = rPick(pool); const key = `e_${d}_${n2}`;
+            if (!seen.has(key)) { seen.add(key); raws.push(mk(equalCuts(d), n2, false)); }
+          } else if (r < 0.8) {
+            const pool = []; for (let dd = 2; dd <= 9; dd++) if (dd !== d && dd > n) pool.push(dd);
+            if (pool.length === 0) continue;
+            const d2 = rPick(pool); const key = `e_${d2}_${n}`;
+            if (!seen.has(key)) { seen.add(key); raws.push(mk(equalCuts(d2), n, false)); }
+          } else {
+            const d2 = rInt(2, 8); const n2 = rInt(1, d2 - 1); const key = `u_${d2}_${n2}`;
+            if (!seen.has(key)) { seen.add(key); raws.push(mk(unequalCuts(d2), n2, false)); }
+          }
+        }
+        return finishFrac({ answerType: 'choice', text: `${fracTxt(n, d)} を 正しく あらわした 図は どれですか？`, fracDisplay: { n, d } }, raws, 2);
+      }
+
+      // ---------- レベル2: 分数を数直線から選ぶ ----------
+      if (level === 2) {
+        const maxV = Math.random() < 0.3 ? 2 : 1;
+        const d = rInt(2, 6);
+        const n = maxV === 2 ? rInt(d + 1, 2 * d - 1) : rInt(1, d - 1);
+        const mk = (dd, k, correct) => ({ kind: 'line', d: dd, maxV, k, correct });
+        const raws = [mk(d, n, true)];
+        const seen = new Set([`${d}_${n}`]);
+        const add = (dd, k) => {
+          const key = `${dd}_${k}`;
+          if (raws.length < 4 && k >= 1 && k <= dd * maxV - 1 && !sameVal(k, dd, n, d) && !seen.has(key)) { seen.add(key); raws.push(mk(dd, k, false)); }
+        };
+        add(d, n + 1); add(d, n - 1);
+        let guard = 0;
+        while (raws.length < 4 && guard++ < 60) {
+          if (Math.random() < 0.5) add(d, n + rPick([-2, 2, -3, 3]));
+          else add(rInt(2, 6), n);
+        }
+        return finishFrac({ answerType: 'choice', text: `${fracTxt(n, d)} を あらわして いる 数直線は どれですか？`, fracDisplay: { n, d } }, raws, 1);
+      }
+
+      // ---------- レベル3: 大きさ比べ・1より大きい分数など ----------
+      if (level === 3) {
+        const v = rInt(1, 4);
+        if (v === 1) { // 分子が同じ
+          const n = rInt(1, 6); const d1 = rInt(n + 1, 10); let d2 = rInt(n + 1, 10);
+          while (d2 === d1) d2 = rInt(n + 1, 10);
+          const wantBig = Math.random() < 0.5;
+          const ansD = wantBig ? Math.min(d1, d2) : Math.max(d1, d2);
+          return finishFrac({ answerType: 'choice', text: `分子が 同じ 分数 ${fracTxt(n, d1)} と ${fracTxt(n, d2)} で、\n${wantBig ? '大きい' : '小さい'} ほうは どちらですか？` }, [fracOpt(n, d1, d1 === ansD), fracOpt(n, d2, d2 === ansD)], 2);
+        }
+        if (v === 2) { // 分母が同じ
+          const d = rInt(3, 10); const n1 = rInt(1, d - 1); let n2 = rInt(1, d - 1);
+          while (n2 === n1) n2 = rInt(1, d - 1);
+          const wantBig = Math.random() < 0.5;
+          const ansN = wantBig ? Math.max(n1, n2) : Math.min(n1, n2);
+          return finishFrac({ answerType: 'choice', text: `分母が 同じ 分数 ${fracTxt(n1, d)} と ${fracTxt(n2, d)} で、\n${wantBig ? '大きい' : '小さい'} ほうは どちらですか？` }, [fracOpt(n1, d, n1 === ansN), fracOpt(n2, d, n2 === ansN)], 2);
+        }
+        if (v === 3) { // 1より大きい分数
+          const d = rInt(2, 8); const n = d + rInt(1, 5);
+          const raws = [fracOpt(n, d, true)];
+          const seen = new Set([`${n}_${d}`]);
+          const dd = rInt(2, 8); raws.push(fracOpt(dd, dd, false)); seen.add(`${dd}_${dd}`);
+          let guard = 0;
+          while (raws.length < 4 && guard++ < 60) {
+            const d2 = rInt(2, 9); const n2 = rInt(1, d2 - 1); const key = `${n2}_${d2}`;
+            if (!seen.has(key)) { seen.add(key); raws.push(fracOpt(n2, d2, false)); }
+          }
+          return finishFrac({ answerType: 'choice', text: '1より 大きい 分数は どれですか？' }, raws, 2);
+        }
+        // 1と同じ大きさ
+        const dd = rInt(2, 9);
+        const raws = [fracOpt(dd, dd, true)];
+        const seen = new Set([`${dd}_${dd}`]);
+        let guard = 0;
+        while (raws.length < 4 && guard++ < 60) {
+          const d2 = rInt(2, 9); const n2 = rInt(1, 12); const key = `${n2}_${d2}`;
+          if (n2 !== d2 && !seen.has(key)) { seen.add(key); raws.push(fracOpt(n2, d2, false)); }
+        }
+        return finishFrac({ answerType: 'choice', text: '1と 同じ 大きさの 分数は どれですか？' }, raws, 2);
+      }
+
+      // ---------- レベル4: 同じ大きさの分数・約分 ----------
+      if (level === 4) {
+        const v = rInt(1, 5);
+        if (v <= 2) { // 同じ大きさの分数をすべて選ぶ
+          let a, b; do { b = rInt(2, 5); a = rInt(1, b - 1); } while (gcdF(a, b) !== 1);
+          const m = rInt(2, 3);
+          const ks = rShuffle([2, 3, 4, 5]).slice(0, m);
+          const raws = ks.map(k => fracOpt(k * a, k * b, true));
+          const seen = new Set(raws.map(o => `${o.n}_${o.d}`));
+          const pool = [];
+          [2, 3, 4, 5].forEach(k => {
+            const n = k * a, d = k * b;
+            [[n + 1, d], [n - 1, d], [n, d + 1], [n, d - 1]].forEach(([x, y]) => { if (x >= 1 && y >= 2 && !sameVal(x, y, a, b)) pool.push([x, y]); });
+          });
+          rShuffle(pool).forEach(([x, y]) => { if (raws.length < 6 && !seen.has(`${x}_${y}`)) { seen.add(`${x}_${y}`); raws.push(fracOpt(x, y, false)); } });
+          return finishFrac({ answerType: 'multi', text: `${fracTxt(a, b)} と 同じ 大きさの 分数を\nすべて えらびましょう。` }, raws, 3);
+        }
+        if (v === 3) { // 約分して、これ以上約分できない形にする
+          let a, b; do { b = rInt(2, 8); a = rInt(1, b - 1); } while (gcdF(a, b) !== 1);
+          const k = rInt(2, 6);
+          const raws = [fracOpt(a, b, true)];
+          const seen = new Set([`${a}_${b}`]);
+          const p = [2, 3, 5].find(q => k % q === 0 && q < k);
+          if (p) { const q = k / p; raws.push(fracOpt(q * a, q * b, false)); seen.add(`${q * a}_${q * b}`); }
+          const cand = rShuffle([[a + 1, b], [a, b + 1], [a + 1, b + 1], [b, a], [a + 2, b], [a, b + 2]]);
+          cand.forEach(([x, y]) => { if (raws.length < 4 && x >= 1 && y >= 2 && !sameVal(x, y, a, b) && !seen.has(`${x}_${y}`)) { seen.add(`${x}_${y}`); raws.push(fracOpt(x, y, false)); } });
+          return finishFrac({ answerType: 'choice', text: `${fracTxt(k * a, k * b)} を 約分して、\nこれ以上 約分できない 分数に しましょう。` }, raws, 2);
+        }
+        if (v === 4) { // これ以上約分できない分数をすべて選ぶ
+          const irr = [], red = [];
+          for (let d = 4; d <= 12; d++) for (let n = 1; n < d; n++) (gcdF(n, d) === 1 ? irr : red).push([n, d]);
+          const c = rInt(2, 3);
+          const raws = [...rShuffle(irr).slice(0, c).map(([n, d]) => fracOpt(n, d, true)), ...rShuffle(red).slice(0, 6 - c).map(([n, d]) => fracOpt(n, d, false))];
+          return finishFrac({ answerType: 'multi', text: 'これ以上 約分できない 分数を\nすべて えらびましょう。' }, raws, 3);
+        }
+        // □にあてはまる数
+        let a, b; do { b = rInt(2, 6); a = rInt(1, b - 1); } while (gcdF(a, b) !== 1);
+        const k = rInt(2, 5);
+        if (Math.random() < 0.5) {
+          const text = `${fracTxt(a, b)} = ${fracTxt('□', k * b)}\nの □ に あてはまる 数を こたえましょう。`;
+          return { op: '分数', answerType: 'integer', text, ans: k * a, n1: 0, n2: 0, key: text };
+        }
+        const text = `${fracTxt(k * a, k * b)} = ${fracTxt('□', b)}\nの □ に あてはまる 数を こたえましょう。`;
+        return { op: '分数', answerType: 'integer', text, ans: a, n1: 0, n2: 0, key: text };
+      }
+
+      // ---------- レベル5: 「100円の2分の1は？」など ----------
+      const v = rInt(1, 6);
+      let text = '', ans = 0;
+      if (v === 6) {
+        const d = rPick([2, 4, 5, 10, 20]); const n = rInt(1, d - 1);
+        text = `1mの ${fracTxt(n, d)} は 何cmですか？\n（1m = 100cm）`; ans = 100 * n / d;
+      } else if (v === 5) {
+        const d = rInt(2, 9); const m = rInt(2, 15) * (Math.random() < 0.4 ? 5 : 1);
+        text = `ある 数の ${fracTxt(1, d)} が ${m} です。\nある 数は いくつですか？`; ans = m * d;
+      } else {
+        const d = rPick([2, 3, 4, 5, 6, 8, 10]); const n = rInt(1, d - 1);
+        let total = d * rInt(2, 12) * rPick([1, 5, 10]);
+        if ([2, 4, 5, 10].includes(d) && Math.random() < 0.3) total = rPick([100, 200, 500, 1000]);
+        ans = total / d * n;
+        if (v === 1) text = `${total}円の ${fracTxt(n, d)} は 何円ですか？`;
+        else if (v === 2) text = `${total}この あめの ${fracTxt(n, d)} は 何こですか？`;
+        else if (v === 3) text = `${total}mLの ジュースの ${fracTxt(n, d)} は 何mLですか？`;
+        else text = `${total}cmの リボンの ${fracTxt(n, d)} は 何cmですか？`;
+      }
+      return { op: '分数', answerType: 'integer', text, ans, n1: 0, n2: 0, key: text, writePanel: true };
     };
 
     const generateSingleProblemLocal = (type, level) => {
@@ -699,6 +898,8 @@
           
           return { op: 'がい数', text, ans, ans1, ans2, n1, n2: 0, answerType };
         }
+        case 'fraction':
+          return generateFractionProblem(level);
         default:
           return { n1: 1, n2: 1, op: '+', ans: 2 };
       }
@@ -730,6 +931,113 @@
       return newProblem;
     };
 
+    // ===== 分数ブロック用 表示コンポーネント =====
+    const StackedFrac = ({ n, d, size = 'md' }) => {
+      const sz = size === 'lg' ? 'text-6xl' : size === 'sm' ? 'text-xl' : size === 'em' ? 'text-[0.9em]' : 'text-3xl';
+      return (
+        <span className={`inline-flex flex-col items-center leading-none font-extrabold text-gray-800 px-1 ${sz}`}>
+          <span>{n}</span>
+          <span className="self-stretch border-t-[3px] border-gray-800 my-1"></span>
+          <span>{d}</span>
+        </span>
+      );
+    };
+
+    // 文章中の ⟦分子|分母⟧ を、教科書のような縦書きの分数にして表示する
+    const FracText = ({ text }) => {
+      const parts = String(text).split(/(⟦[^⟧]*⟧)/g);
+      return (
+        <React.Fragment>
+          {parts.map((p, i) => {
+            const m = p.match(/^⟦([^|⟧]*)\|([^⟧]*)⟧$/);
+            if (m) return <span key={i} className="inline-block align-middle mx-1"><StackedFrac n={m[1]} d={m[2]} size="em" /></span>;
+            return <React.Fragment key={i}>{p}</React.Fragment>;
+          })}
+        </React.Fragment>
+      );
+    };
+
+    const FracShape = ({ shape, cuts, filled }) => {
+      const stroke = '#374151';
+      if (shape === 'bar') {
+        return (
+          <svg viewBox="0 0 200 60" className="w-full max-w-[220px] mx-auto">
+            {cuts.slice(0, -1).map((c, i) => (
+              <rect key={i} x={4 + c * 192} y={4} width={(cuts[i + 1] - c) * 192} height={52} fill={i < filled ? '#a78bfa' : '#ffffff'} stroke={stroke} strokeWidth="2.5" />
+            ))}
+          </svg>
+        );
+      }
+      const pt = (f) => { const a = (-90 + f * 360) * Math.PI / 180; return [50 + 44 * Math.cos(a), 50 + 44 * Math.sin(a)]; };
+      return (
+        <svg viewBox="0 0 100 100" className="w-full max-w-[120px] mx-auto">
+          {cuts.slice(0, -1).map((c, i) => {
+            const [x0, y0] = pt(c); const [x1, y1] = pt(cuts[i + 1]);
+            const large = (cuts[i + 1] - c) > 0.5 ? 1 : 0;
+            return <path key={i} d={`M50,50 L${x0},${y0} A44,44 0 ${large} 1 ${x1},${y1} Z`} fill={i < filled ? '#a78bfa' : '#ffffff'} stroke={stroke} strokeWidth="2.5" strokeLinejoin="round" />;
+          })}
+        </svg>
+      );
+    };
+
+    const FracLine = ({ d, maxV, k }) => {
+      const T = d * maxV;
+      const x = (i) => 20 + (260 / T) * i;
+      return (
+        <svg viewBox="0 0 300 70" className="w-full max-w-[420px] mx-auto">
+          <line x1="12" y1="40" x2="288" y2="40" stroke="#374151" strokeWidth="3" strokeLinecap="round" />
+          {Array.from({ length: T + 1 }).map((_, i) => {
+            const major = i % d === 0;
+            return (
+              <g key={i}>
+                <line x1={x(i)} y1={major ? 30 : 34} x2={x(i)} y2={major ? 50 : 46} stroke="#374151" strokeWidth={major ? 3 : 1.5} />
+                {major && <text x={x(i)} y="66" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#374151">{i / d}</text>}
+              </g>
+            );
+          })}
+          <polygon points={`${x(k) - 6},8 ${x(k) + 6},8 ${x(k)},24`} fill="#ef4444" />
+        </svg>
+      );
+    };
+
+    const FracOption = ({ opt, compact }) => {
+      if (opt.kind === 'shape') return <FracShape shape={opt.shape} cuts={opt.cuts} filled={opt.filled} />;
+      if (opt.kind === 'line') return <FracLine d={opt.d} maxV={opt.maxV} k={opt.k} />;
+      if (opt.kind === 'frac') return <StackedFrac n={opt.n} d={opt.d} size={compact ? 'sm' : 'md'} />;
+      return <span className="text-2xl font-bold">{opt.label}</span>;
+    };
+
+    const FractionChoices = ({ problem, selected = [], onTap, disabled, compact }) => {
+      const cols = problem.optionCols || 2;
+      const colClass = cols === 1 ? 'grid-cols-1' : cols === 3 ? 'grid-cols-3' : 'grid-cols-2';
+      return (
+        <div className={`grid gap-3 ${colClass} w-full`}>
+          {problem.options.map(opt => {
+            const sel = selected.includes(opt.id);
+            const inner = (
+              <React.Fragment>
+                <span className={`${compact ? 'w-6 h-6 text-sm' : 'w-9 h-9'} shrink-0 rounded-full bg-sky-500 text-white font-extrabold flex items-center justify-center`}>{opt.id}</span>
+                <div className="flex-1 flex justify-center items-center min-w-0"><FracOption opt={opt} compact={compact} /></div>
+              </React.Fragment>
+            );
+            if (!onTap) {
+              return <div key={opt.id} className="border-2 border-gray-400 rounded-xl p-2 flex items-center gap-2 break-inside-avoid">{inner}</div>;
+            }
+            return (
+              <button
+                key={opt.id}
+                onClick={() => onTap(opt.id)}
+                disabled={disabled}
+                className={`rounded-2xl border-4 p-2 sm:p-3 flex items-center gap-2 transition-all active:scale-95 ${sel ? 'border-violet-500 bg-violet-50' : 'border-gray-200 bg-white hover:bg-gray-50'} ${disabled && !sel ? 'opacity-70' : ''}`}
+              >
+                {inner}
+              </button>
+            );
+          })}
+        </div>
+      );
+    };
+
     const GridBackground = () => (
       <div className="absolute inset-0 pointer-events-none flex justify-end pr-2 sm:pr-4 md:pr-12 z-0">
         <div className="flex h-full border-r-2 border-amber-700/15">
@@ -743,7 +1051,7 @@
     const VerticalMath = ({ problem }) => {
       const { n1, n2, op } = problem;
       
-      if (op === '数直線' || op === '長さ' || op === '単位' || op === '文章問題' || op === 'がい数' || op === '時刻と時間') return null;
+      if (op === '数直線' || op === '長さ' || op === '単位' || op === '文章問題' || op === 'がい数' || op === '時刻と時間' || op === '分数') return null;
 
       if (op === '÷') {
         const n1Chars = String(n1).split('');
@@ -954,14 +1262,15 @@
       length: { bg: 'bg-teal-50', text: 'text-teal-700', textL: 'text-teal-500', border: 'border-teal-200', btn: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:translate-y-[6px]', btnC: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e]', btnT: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857]', title: '長さ' },
       unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', textL: 'text-cyan-500', border: 'border-cyan-200', btn: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:translate-y-[6px]', btnC: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2]', btnT: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0284c7]', title: '単位' },
       clock: { bg: 'bg-lime-50', text: 'text-lime-700', textL: 'text-lime-500', border: 'border-lime-200', btn: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f] active:translate-y-[6px]', btnC: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f]', btnT: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d]', title: '時刻と時間' },
+      fraction: { bg: 'bg-sky-50', text: 'text-sky-700', textL: 'text-sky-500', border: 'border-sky-200', btn: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0369a1] active:translate-y-[6px]', btnC: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0369a1]', btnT: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2]', title: '分数' },
       word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', textL: 'text-indigo-500', border: 'border-indigo-200', btn: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:translate-y-[6px]', btnC: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca]', btnT: 'bg-violet-400 hover:bg-violet-500 shadow-[0_6px_0_#5b21b6]', title: '文章問題' }
     }[type] || {});
 
     const HomeView = ({ setType, setView }) => {
-      const [typePoints, setTypePoints] = useState({ add:0, sub:0, mul:0, div:0, number_line:0, length:0, unit:0, word_problem:0, approx:0, clock:0 });
+      const [typePoints, setTypePoints] = useState({ add:0, sub:0, mul:0, div:0, number_line:0, length:0, unit:0, word_problem:0, approx:0, clock:0, fraction:0 });
       const [order, setOrder] = useState(() => {
         const savedOrder = localStorage.getItem('sansu_button_order_v2');
-        const defaultOrder = ['add', 'sub', 'mul', 'div', 'clock', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'print'];
+        const defaultOrder = ['add', 'sub', 'mul', 'div', 'clock', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'fraction', 'print'];
         if (savedOrder) {
           try {
             const parsed = JSON.parse(savedOrder);
@@ -969,7 +1278,9 @@
               const mergedOrder = [...parsed];
               defaultOrder.forEach(item => {
                 if (!mergedOrder.includes(item)) {
-                  mergedOrder.push(item);
+                  const printIdx = mergedOrder.indexOf('print');
+                  if (item !== 'print' && printIdx >= 0) mergedOrder.splice(printIdx, 0, item);
+                  else mergedOrder.push(item);
                 }
               });
               return mergedOrder;
@@ -1033,7 +1344,8 @@
           length: calcTypeTotal('length'),
           unit: calcTypeTotal('unit'),
           word_problem: calcTypeTotal('word_problem'),
-          clock: calcTypeTotal('clock')
+          clock: calcTypeTotal('clock'),
+          fraction: calcTypeTotal('fraction')
         };
         setTypePoints(pts);
 
@@ -1061,7 +1373,7 @@
         }
       }, []);
 
-      const totalAllPoints = typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem + typePoints.clock;
+      const totalAllPoints = typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem + typePoints.clock + typePoints.fraction;
 
       const unlockConditions = {
         word_problem: 100,
@@ -1096,13 +1408,13 @@
       };
 
       const handleOmakase = () => {
-        const playableKeys = ['add', 'sub', 'mul', 'div', 'approx', 'number_line', 'length', 'unit', 'clock', 'word_problem'].filter(k => isUnlocked(k));
+        const playableKeys = ['add', 'sub', 'mul', 'div', 'approx', 'number_line', 'length', 'unit', 'clock', 'word_problem', 'fraction'].filter(k => isUnlocked(k));
         if (playableKeys.length === 0) return;
 
         const keyLabels = {
           add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算',
           approx: 'がい数', number_line: '数直線', length: '長さ',
-          unit: '単位', clock: '時刻と時間', word_problem: '文章問題'
+          unit: '単位', clock: '時刻と時間', word_problem: '文章問題', fraction: '分数'
         };
 
         setIsDrumrolling(true);
@@ -1213,6 +1525,7 @@
                   unit: { label: <span><ruby>単位<rt>たんい</rt></ruby></span>, bg: 'bg-cyan-400 hover:bg-cyan-500', shadow: 'shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', iconText: '🔄', iconColor: 'text-cyan-200 group-hover:text-cyan-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   clock: { label: <span><ruby>時刻<rt>じこく</rt></ruby>と<ruby>時間<rt>じかん</rt></ruby></span>, bg: 'bg-lime-400 hover:bg-lime-500', shadow: 'shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', iconText: '⏱️', iconColor: 'text-lime-200 group-hover:text-lime-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   word_problem: { label: <span><ruby>文章問題<rt>ぶんしょうもんだい</rt></ruby></span>, bg: 'bg-indigo-400 hover:bg-indigo-500', shadow: 'shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', iconText: '📖', iconColor: 'text-indigo-200 group-hover:text-indigo-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  fraction: { label: <span><ruby>分数<rt>ぶんすう</rt></ruby></span>, bg: 'bg-sky-400 hover:bg-sky-500', shadow: 'shadow-[0_6px_0_#0369a1] active:shadow-[0_0px_0_#0369a1]', iconText: '🍕', iconColor: 'text-sky-200 group-hover:text-sky-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   print: { label: <span>プリント<ruby>印刷<rt>いんさつ</rt></ruby></span>, bg: 'bg-stone-400 hover:bg-stone-500', shadow: 'shadow-[0_6px_0_#57534e] active:shadow-[0_0px_0_#57534e]', iconText: '🖨️', iconColor: 'text-stone-200 group-hover:text-stone-100', iconSize: 'text-4xl', iconPos: 'right-8' }
                 };
                 const btn = buttonData[key];
@@ -1306,7 +1619,7 @@
       };
 
       const isLevelUnlocked = (lv) => {
-        if (type === 'clock') return true;
+        if (type === 'clock' || type === 'fraction') return true;
         if (lv === 1 || lv === 2) return true;
         const lvData = typeRecords[lv] || {};
         if (lvData.unlocked) return true;
@@ -1345,7 +1658,7 @@
               </h2>
             </div>
             <div className="flex flex-col gap-4">
-              {(type === 'add' || type === 'sub' || type === 'mul' || type === 'div') && (
+              {Boolean(type) && (
                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-3xl border-2 border-amber-300 flex flex-col gap-3 shadow-sm">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-base font-extrabold text-amber-800 flex items-center gap-1">
@@ -1505,6 +1818,7 @@
       const isFinishedRef = useRef(false); const canvasRef = useRef(null); const [clearKey, setClearKey] = useState(Date.now());
       const lastActionTimeRef = useRef(Date.now());
       const [showHint, setShowHint] = useState(false);
+      const [selected, setSelected] = useState([]);
 
       const [currentEscLevel, setCurrentEscLevel] = useState(1);
       const [streak, setStreak] = useState(0);
@@ -1512,9 +1826,12 @@
 
       const theme = getTheme(type);
       const isNumberLine = problem.op === '数直線'; const isLength = problem.op === '長さ'; const isUnit = problem.op === '単位'; const isWordProblem = problem.op === '文章問題'; const isApprox = problem.op === 'がい数'; const isClock = problem.op === '時刻と時間';
-      const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox && !isClock;
+      const isFraction = problem.op === '分数';
+      const isChoice = isFraction && (problem.answerType === 'choice' || problem.answerType === 'multi');
+      const hasRightPanel = !isNumberLine && !isLength && !isUnit && !isApprox && !isClock && !(isFraction && !problem.writePanel);
 
       const renderCorrectAnswer = (p) => {
+        if (p.op === '分数' && p.answerType !== 'integer') return <span>{p.answerText}</span>;
         if (p.op === '文章問題') {
           return (
             <div className="flex flex-col gap-1 text-xl">
@@ -1600,11 +1917,17 @@
         return <span>{p.ans}</span>;
       };
 
-      const handleCheck = useCallback(() => {
+      const handleCheck = useCallback((overrideSel) => {
         if (countdown !== null || status === 'correct') return;
         let isCorrectAns = false, isCorrectRem = true;
         const hasRem = problem.rem !== undefined;
         if (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) { if (!userInput) return; if (hasRem && !userInputRem) return; isCorrectAns = parseInt(userInput) === problem.ans; isCorrectRem = hasRem ? parseInt(userInputRem) === problem.rem : true; }
+        else if (problem.answerType === 'choice' || problem.answerType === 'multi') {
+          const sel = Array.isArray(overrideSel) ? overrideSel : selected;
+          if (sel.length === 0) return;
+          const cor = problem.correctIds || [];
+          isCorrectAns = sel.length === cor.length && cor.every(id => sel.includes(id));
+        }
         else if (problem.answerType === 'decimal') { if (!userInput) return; isCorrectAns = parseFloat(userInput) === problem.ans; }
         else if (problem.answerType === 'fraction_proper' || problem.answerType === 'fraction_improper') { if (!userInputNum || !userInputDen) return; isCorrectAns = parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen; }
         else if (problem.answerType === 'fraction_mixed') { if (!userInputInt || !userInputNum || !userInputDen) return; isCorrectAns = parseInt(userInputInt) === problem.ansInt && parseInt(userInputNum) === problem.ansNum && parseInt(userInputDen) === problem.ansDen; }
@@ -1652,7 +1975,7 @@
           } else {
             setTimeout(() => {
               const newProb = generateProblem(type, nextLevel, problem); setProblem(newProb);
-              setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
+              setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2(''); setSelected([]);
               setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
               setStatus('idle'); setClearKey(Date.now()); setCurrentProblemMistakes(0);
               setShowHint(false);
@@ -1664,7 +1987,7 @@
           if (isEscalation) {
             setStreak(0);
           }
-          setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
+          setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2(''); setSelected([]);
           setFocusedInput(problem.answerType==='fraction_proper'||problem.answerType==='fraction_improper'?'num':problem.answerType==='fraction_mixed'?'int':problem.answerType==='length_cm'||problem.answerType==='length_cm_mm'?'cm':problem.answerType==='length_mm'?'mm':problem.answerType==='unit_composite_from_small'||problem.answerType==='unit_large'||problem.answerType==='unit_small'||problem.answerType==='unit_small_from_composite'||problem.answerType==='clock'||problem.answerType==='clock_read'||problem.answerType==='duration'?'unit1':problem.answerType==='approx_range'?'approx1':'ans');
           const newMistakes = mistakes + 1; setMistakes(newMistakes); setCurrentProblemMistakes(prev => prev + 1);
           
@@ -1678,7 +2001,7 @@
             setTimeout(() => { setResult({ isGameOver: true, reason: 'mistakes', earnedPoints: score * (isEscalation ? currentEscLevel : level), finalEscLevel: isEscalation ? currentEscLevel : null }); setView('result'); }, wrongDelayTime);
           } else { setTimeout(() => setStatus('idle'), wrongDelayTime); }
         }
-      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, score, course, startTime, setResult, setView, mistakes, type, level, isWordProblem, isEscalation, currentEscLevel, streak]);
+      }, [userInput, userInputRem, userInputCm, userInputMm, userInputUnit1, userInputUnit2, userInputApprox1, userInputApprox2, userInputNum, userInputDen, userInputInt, problem, status, score, course, startTime, setResult, setView, mistakes, type, level, isWordProblem, isEscalation, currentEscLevel, streak, selected]);
 
       useEffect(() => {
         const initialLevel = isEscalation ? getLastEscalationLevel(type) : level;
@@ -1686,7 +2009,7 @@
         setStreak(0);
         setLevelUpMsg('');
         const newProb = generateProblem(type, initialLevel); setProblem(newProb);
-        setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2('');
+        setUserInput(''); setUserInputRem(''); setUserInputNum(''); setUserInputDen(''); setUserInputInt(''); setUserInputCm(''); setUserInputMm(''); setUserInputUnit1(''); setUserInputUnit2(''); setUserInputApprox1(''); setUserInputApprox2(''); setSelected([]);
         setFocusedInput(newProb.answerType==='fraction_proper'||newProb.answerType==='fraction_improper'?'num':newProb.answerType==='fraction_mixed'?'int':newProb.answerType==='length_cm'||newProb.answerType==='length_cm_mm'?'cm':newProb.answerType==='length_mm'?'mm':newProb.answerType==='unit_composite_from_small'||newProb.answerType==='unit_large'||newProb.answerType==='unit_small'||newProb.answerType==='unit_small_from_composite'||newProb.answerType==='clock'||newProb.answerType==='clock_read'||newProb.answerType==='duration'?'unit1':newProb.answerType==='approx_range'?'approx1':'ans');
         setStatus('idle'); setScore(0); setCountdown(3); setStartTime(null); setNow(null); setMistakes(0); setCurrentProblemMistakes(0); setClearKey(Date.now()); isFinishedRef.current = false;
         setShowHint(false);
@@ -1900,6 +2223,39 @@
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [handleInput, handleDelete, handleCheck, countdown]);
 
+      const handleChoiceTap = (id) => {
+        if (countdown !== null || status !== 'idle') return;
+        if (problem.answerType === 'multi') {
+          setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+        } else {
+          setSelected([id]);
+          handleCheck([id]);
+        }
+      };
+
+      const renderChoices = () => (
+        <div className="w-full max-w-xl flex flex-col gap-4 px-2 relative z-10">
+          {problem.fracDisplay && (
+            <div className="flex justify-center py-2 bg-sky-50 rounded-2xl border-2 border-sky-100">
+              <StackedFrac n={problem.fracDisplay.n} d={problem.fracDisplay.d} size="lg" />
+            </div>
+          )}
+          {problem.answerType === 'multi' && (
+            <p className="text-center font-bold text-sky-700">あてはまる ものを ぜんぶ えらんでね</p>
+          )}
+          <FractionChoices problem={problem} selected={selected} onTap={handleChoiceTap} disabled={countdown !== null || status !== 'idle'} />
+          {problem.answerType === 'multi' && (
+            <button
+              onClick={() => handleCheck()}
+              disabled={countdown !== null || selected.length === 0}
+              className={`text-lg sm:text-2xl md:text-3xl font-bold py-4 sm:py-6 rounded-xl sm:rounded-2xl transition-all w-full ${selected.length === 0 ? 'bg-gray-300 text-gray-500 shadow-[0_4px_0_#9ca3af] cursor-not-allowed opacity-50' : 'bg-orange-500 text-white shadow-[0_4px_0_#c2410c] active:shadow-[0_0px_0_rgba(0,0,0,0.2)] active:translate-y-[4px]'}`}
+            >
+              こたえる
+            </button>
+          )}
+        </div>
+      );
+
       const renderNumpad = () => {
         const canSubmit = !(countdown !== null || (
           (problem.answerType === 'integer' || (!problem.answerType && !isLength && !isUnit && !isWordProblem && !isApprox && !isClock)) ? (!userInput || (problem.rem !== undefined && !userInputRem)) :
@@ -2044,10 +2400,10 @@
 
             <div className={`w-full flex-1 bg-white sm:rounded-t-3xl shadow-lg relative flex flex-col`}>
               
-              {(isWordProblem || isApprox || isUnit || isNumberLine) && (
-                <div className={`w-full p-4 sm:p-8 z-20 shrink-0 border-b-4 ${isWordProblem ? 'bg-indigo-50 border-indigo-100' : isUnit ? 'bg-cyan-50 border-cyan-100' : isNumberLine ? 'bg-pink-50 border-pink-100' : 'bg-orange-50 border-orange-100'}`}>
-                  <div className={`text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed whitespace-pre-wrap text-left w-full max-w-4xl mx-auto border-l-4 pl-4 bg-white p-4 rounded-r-xl shadow-sm ${isWordProblem ? 'border-indigo-400' : isUnit ? 'border-cyan-400' : isNumberLine ? 'border-pink-400' : 'border-orange-400'}`}>
-                    {problem.text}
+              {(isWordProblem || isApprox || isUnit || isNumberLine || isFraction) && (
+                <div className={`w-full p-4 sm:p-8 z-20 shrink-0 border-b-4 ${isFraction ? 'bg-sky-50 border-sky-100' : isWordProblem ? 'bg-indigo-50 border-indigo-100' : isUnit ? 'bg-cyan-50 border-cyan-100' : isNumberLine ? 'bg-pink-50 border-pink-100' : 'bg-orange-50 border-orange-100'}`}>
+                  <div className={`text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed whitespace-pre-wrap text-left w-full max-w-4xl mx-auto border-l-4 pl-4 bg-white p-4 rounded-r-xl shadow-sm ${isFraction ? 'border-sky-400' : isWordProblem ? 'border-indigo-400' : isUnit ? 'border-cyan-400' : isNumberLine ? 'border-pink-400' : 'border-orange-400'}`}>
+                    <FracText text={problem.text} />
                   </div>
                 </div>
               )}
@@ -2069,22 +2425,9 @@
 
                     {isClock && (
                       <div className="w-full flex flex-col items-center p-2">
-                         <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{problem.text}</span>
+                         <span className="text-xl sm:text-2xl font-bold text-gray-800 mb-4"><FracText text={problem.text} /></span>
                          
-                         <div className="mb-4">
-                           <button 
-                             onClick={() => setShowHint(prev => !prev)} 
-                             className={`px-6 py-2.5 rounded-2xl font-bold shadow-sm border transition-all flex items-center gap-2 ${
-                               showHint 
-                                 ? 'bg-amber-400 text-white border-amber-500 hover:bg-amber-500' 
-                                 : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
-                             }`}
-                           >
-                             <span>💡</span> <span>{showHint ? 'ヒントを かくす' : 'ヒントを みる'}</span>
-                           </button>
-                         </div>
-
-                         {showHint && (
+                         {true && (
                            <div className="w-full flex justify-center animate-in fade-in zoom-in duration-200">
                              {problem.answerType === 'clock_read' ? (
                                <ClockSVG h={problem.h1} m={problem.m1} size={150} />
@@ -2112,7 +2455,7 @@
                         {isNumberLine && <NumberLineSVG labels={problem.labels} count={problem.count} />}
                         {isLength && <RulerSVG totalMm={problem.ansTotalMm} maxCm={problem.maxCm} />}
                       </div>
-                    ) : !isClock ? (
+                    ) : !isClock && !isFraction ? (
                       <div className="text-5xl md:text-7xl font-bold text-center mt-8 tracking-widest">{problem.n1} {problem.op} {problem.n2} = </div>
                     ) : null}
 
@@ -2216,7 +2559,7 @@
                     )}
 
                     <div className="mt-4 sm:mt-6 w-full flex justify-center pb-4">
-                      {renderNumpad()}
+                      {isChoice ? renderChoices() : renderNumpad()}
                     </div>
                   </div>
                 </div>
@@ -2337,7 +2680,8 @@
           { key: 'approx', label: 'がい数', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
           { key: 'number_line', label: '数直線', color: 'text-pink-700', bg: 'bg-pink-50', border: 'border-pink-200' },
           { key: 'unit', label: '単位', color: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-cyan-200' },
-          { key: 'clock', label: '時刻と時間', color: 'text-lime-700', bg: 'bg-lime-50', border: 'border-lime-200' }
+          { key: 'clock', label: '時刻と時間', color: 'text-lime-700', bg: 'bg-lime-50', border: 'border-lime-200' },
+          { key: 'fraction', label: '分数', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200' }
         ];
 
         const list = [];
@@ -2486,10 +2830,10 @@
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                  {['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'clock'].map(type => {
+                  {['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'clock', 'fraction'].map(type => {
                     if (!mistakes[type] || Object.keys(mistakes[type]).length === 0) return null;
                     const typeMistakes = mistakes[type];
-                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題', clock: '時刻と時間' }[type];
+                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題', clock: '時刻と時間', fraction: '分数' }[type];
                     
                     return Object.keys(typeMistakes).map(key => {
                       const m = typeMistakes[key];
@@ -2508,7 +2852,7 @@
                                      `${m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'} ${m.ans2}${m.unitSmall || 'cm'}`
                                    ) : 
                                    m.op === '文章問題' || m.op === 'がい数' ? m.text : 
-                                   m.op === '時刻と時間' ? m.text : 
+                                   m.op === '時刻と時間' || m.op === '分数' ? m.text : 
                                    `${m.n1} ${m.op} ${m.n2}`
                                  }>
                               {m.op === '数直線' ? `数直線 (開始${m.n1} 間隔${m.n2})` : 
@@ -2520,7 +2864,7 @@
                                  `${m.q_total_small}${m.unitSmall || 'cm'} = ${m.ans1}${m.unitLarge || 'm'} ${m.ans2}${m.unitSmall || 'cm'}`
                                ) :
                                m.op === '文章問題' || m.op === 'がい数' ? m.text : 
-                               m.op === '時刻と時間' ? m.text : 
+                               m.op === '時刻と時間' || m.op === '分数' ? m.text : 
                                `${m.n1} ${m.op} ${m.n2}`}
                             </div>
                           </div>
@@ -2572,7 +2916,7 @@
 
       const unitLabels = { 
         add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数',
-        number_line: '数直線', length: '長さ', unit: '単位', clock: '時刻と時間', word_problem: '文章問題' 
+        number_line: '数直線', length: '長さ', unit: '単位', clock: '時刻と時間', word_problem: '文章問題', fraction: '分数' 
       };
 
       const handlePrint = () => {
@@ -2603,6 +2947,7 @@
       };
 
       const renderPrintAnswer = (p) => {
+        if (p.op === '分数' && p.answerType !== 'integer') return <span>{p.answerText}</span>;
         if (p.op === '文章問題') {
           return (
              <div className="flex flex-col gap-1 text-lg">
@@ -2729,7 +3074,17 @@
                 {problems.map((p, i) => (
                   <div key={i} className={`flex ${isTwoCols ? 'gap-2' : 'gap-4'} items-start break-inside-avoid`}>
                     <span className="w-12 shrink-0 text-right">({i+1})</span>
-                    {p.op === '時刻と時間' ? (
+                    {p.op === '分数' ? (
+                      <div className="flex flex-col gap-3 flex-1 pr-4">
+                        <span className="whitespace-pre-wrap"><FracText text={p.text} /></span>
+                        {p.fracDisplay && <div><StackedFrac n={p.fracDisplay.n} d={p.fracDisplay.d} size="md" /></div>}
+                        {p.answerType === 'integer' ? (
+                          <div className="flex items-center gap-4 justify-end mt-2 pr-12"><span>答え:</span><div className="w-40 border-b border-gray-400 h-6"></div></div>
+                        ) : (
+                          <FractionChoices problem={p} compact />
+                        )}
+                      </div>
+                    ) : p.op === '時刻と時間' ? (
                       <div className="flex flex-col gap-4 flex-1">
                         <span>{p.text}</span>
                         {p.answerType === 'clock_read' ? (
