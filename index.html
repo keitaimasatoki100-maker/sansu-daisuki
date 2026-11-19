@@ -898,6 +898,10 @@
           
           return { op: 'がい数', text, ans, ans1, ans2, n1, n2: 0, answerType };
         }
+        case 'arith': {
+          const t = ['add', 'sub', 'mul', 'div'][Math.floor(Math.random() * 4)];
+          return generateSingleProblemLocal(t, level);
+        }
         case 'fraction':
           return generateFractionProblem(level);
         default:
@@ -1262,15 +1266,16 @@
       length: { bg: 'bg-teal-50', text: 'text-teal-700', textL: 'text-teal-500', border: 'border-teal-200', btn: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e] active:translate-y-[6px]', btnC: 'bg-teal-400 hover:bg-teal-500 shadow-[0_6px_0_#0f766e]', btnT: 'bg-emerald-400 hover:bg-emerald-500 shadow-[0_6px_0_#047857]', title: '長さ' },
       unit: { bg: 'bg-cyan-50', text: 'text-cyan-700', textL: 'text-cyan-500', border: 'border-cyan-200', btn: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2] active:translate-y-[6px]', btnC: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2]', btnT: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0284c7]', title: '単位' },
       clock: { bg: 'bg-lime-50', text: 'text-lime-700', textL: 'text-lime-500', border: 'border-lime-200', btn: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f] active:translate-y-[6px]', btnC: 'bg-lime-400 hover:bg-lime-500 shadow-[0_6px_0_#4d7c0f]', btnT: 'bg-green-400 hover:bg-green-500 shadow-[0_6px_0_#15803d]', title: '時刻と時間' },
+      arith: { bg: 'bg-rose-50', text: 'text-rose-700', textL: 'text-rose-500', border: 'border-rose-200', btn: 'bg-rose-400 hover:bg-rose-500 shadow-[0_6px_0_#be123c] active:translate-y-[6px]', btnC: 'bg-rose-400 hover:bg-rose-500 shadow-[0_6px_0_#be123c]', btnT: 'bg-orange-400 hover:bg-orange-500 shadow-[0_6px_0_#c2410c]', title: '四則計算（＋－×÷）' },
       fraction: { bg: 'bg-sky-50', text: 'text-sky-700', textL: 'text-sky-500', border: 'border-sky-200', btn: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0369a1] active:translate-y-[6px]', btnC: 'bg-sky-400 hover:bg-sky-500 shadow-[0_6px_0_#0369a1]', btnT: 'bg-cyan-400 hover:bg-cyan-500 shadow-[0_6px_0_#0891b2]', title: '分数' },
       word_problem: { bg: 'bg-indigo-50', text: 'text-indigo-700', textL: 'text-indigo-500', border: 'border-indigo-200', btn: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca] active:translate-y-[6px]', btnC: 'bg-indigo-400 hover:bg-indigo-500 shadow-[0_6px_0_#4338ca]', btnT: 'bg-violet-400 hover:bg-violet-500 shadow-[0_6px_0_#5b21b6]', title: '文章問題' }
     }[type] || {});
 
     const HomeView = ({ setType, setView }) => {
-      const [typePoints, setTypePoints] = useState({ add:0, sub:0, mul:0, div:0, number_line:0, length:0, unit:0, word_problem:0, approx:0, clock:0, fraction:0 });
+      const [typePoints, setTypePoints] = useState({ add:0, sub:0, mul:0, div:0, number_line:0, length:0, unit:0, word_problem:0, approx:0, clock:0, fraction:0, arith:0 });
       const [order, setOrder] = useState(() => {
         const savedOrder = localStorage.getItem('sansu_button_order_v2');
-        const defaultOrder = ['add', 'sub', 'mul', 'div', 'clock', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'fraction', 'print'];
+        const defaultOrder = ['add', 'sub', 'mul', 'div', 'arith', 'clock', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'fraction', 'print'];
         if (savedOrder) {
           try {
             const parsed = JSON.parse(savedOrder);
@@ -1345,7 +1350,8 @@
           unit: calcTypeTotal('unit'),
           word_problem: calcTypeTotal('word_problem'),
           clock: calcTypeTotal('clock'),
-          fraction: calcTypeTotal('fraction')
+          fraction: calcTypeTotal('fraction'),
+          arith: calcTypeTotal('arith')
         };
         setTypePoints(pts);
 
@@ -1373,7 +1379,7 @@
         }
       }, []);
 
-      const totalAllPoints = typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem + typePoints.clock + typePoints.fraction;
+      const totalAllPoints = typePoints.add + typePoints.sub + typePoints.mul + typePoints.div + typePoints.approx + typePoints.number_line + typePoints.length + typePoints.unit + typePoints.word_problem + typePoints.clock + typePoints.fraction + typePoints.arith;
 
       const unlockConditions = {
         word_problem: 100,
@@ -1408,13 +1414,13 @@
       };
 
       const handleOmakase = () => {
-        const playableKeys = ['add', 'sub', 'mul', 'div', 'approx', 'number_line', 'length', 'unit', 'clock', 'word_problem', 'fraction'].filter(k => isUnlocked(k));
+        const playableKeys = ['add', 'sub', 'mul', 'div', 'approx', 'number_line', 'length', 'unit', 'clock', 'word_problem', 'fraction', 'arith'].filter(k => isUnlocked(k));
         if (playableKeys.length === 0) return;
 
         const keyLabels = {
           add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算',
           approx: 'がい数', number_line: '数直線', length: '長さ',
-          unit: '単位', clock: '時刻と時間', word_problem: '文章問題', fraction: '分数'
+          unit: '単位', clock: '時刻と時間', word_problem: '文章問題', fraction: '分数', arith: '四則計算（＋－×÷）'
         };
 
         setIsDrumrolling(true);
@@ -1525,6 +1531,7 @@
                   unit: { label: <span><ruby>単位<rt>たんい</rt></ruby></span>, bg: 'bg-cyan-400 hover:bg-cyan-500', shadow: 'shadow-[0_6px_0_#0891b2] active:shadow-[0_0px_0_#0891b2]', iconText: '🔄', iconColor: 'text-cyan-200 group-hover:text-cyan-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   clock: { label: <span><ruby>時刻<rt>じこく</rt></ruby>と<ruby>時間<rt>じかん</rt></ruby></span>, bg: 'bg-lime-400 hover:bg-lime-500', shadow: 'shadow-[0_6px_0_#4d7c0f] active:shadow-[0_0px_0_#4d7c0f]', iconText: '⏱️', iconColor: 'text-lime-200 group-hover:text-lime-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   word_problem: { label: <span><ruby>文章問題<rt>ぶんしょうもんだい</rt></ruby></span>, bg: 'bg-indigo-400 hover:bg-indigo-500', shadow: 'shadow-[0_6px_0_#4338ca] active:shadow-[0_0px_0_#4338ca]', iconText: '📖', iconColor: 'text-indigo-200 group-hover:text-indigo-100', iconSize: 'text-4xl', iconPos: 'right-8' },
+                  arith: { label: <span><ruby>四則計算<rt>しそくけいさん</rt></ruby>（＋－×÷）</span>, bg: 'bg-rose-400 hover:bg-rose-500', shadow: 'shadow-[0_6px_0_#be123c] active:shadow-[0_0px_0_#be123c]', iconText: '🧮', iconColor: 'text-rose-200 group-hover:text-rose-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   fraction: { label: <span><ruby>分数<rt>ぶんすう</rt></ruby></span>, bg: 'bg-sky-400 hover:bg-sky-500', shadow: 'shadow-[0_6px_0_#0369a1] active:shadow-[0_0px_0_#0369a1]', iconText: '🍕', iconColor: 'text-sky-200 group-hover:text-sky-100', iconSize: 'text-4xl', iconPos: 'right-8' },
                   print: { label: <span>プリント<ruby>印刷<rt>いんさつ</rt></ruby></span>, bg: 'bg-stone-400 hover:bg-stone-500', shadow: 'shadow-[0_6px_0_#57534e] active:shadow-[0_0px_0_#57534e]', iconText: '🖨️', iconColor: 'text-stone-200 group-hover:text-stone-100', iconSize: 'text-4xl', iconPos: 'right-8' }
                 };
@@ -2681,7 +2688,8 @@
           { key: 'number_line', label: '数直線', color: 'text-pink-700', bg: 'bg-pink-50', border: 'border-pink-200' },
           { key: 'unit', label: '単位', color: 'text-cyan-700', bg: 'bg-cyan-50', border: 'border-cyan-200' },
           { key: 'clock', label: '時刻と時間', color: 'text-lime-700', bg: 'bg-lime-50', border: 'border-lime-200' },
-          { key: 'fraction', label: '分数', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200' }
+          { key: 'fraction', label: '分数', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200' },
+          { key: 'arith', label: '四則計算（＋－×÷）', color: 'text-rose-700', bg: 'bg-rose-50', border: 'border-rose-200' }
         ];
 
         const list = [];
@@ -2830,10 +2838,10 @@
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                  {['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'clock', 'fraction'].map(type => {
+                  {['add', 'sub', 'mul', 'div', 'word_problem', 'length', 'approx', 'number_line', 'unit', 'clock', 'fraction', 'arith'].map(type => {
                     if (!mistakes[type] || Object.keys(mistakes[type]).length === 0) return null;
                     const typeMistakes = mistakes[type];
-                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題', clock: '時刻と時間', fraction: '分数' }[type];
+                    const typeLabel = { add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数', number_line: '数直線', length: '長さ', unit: '単位', word_problem: '文章問題', clock: '時刻と時間', fraction: '分数', arith: '四則計算（＋－×÷）' }[type];
                     
                     return Object.keys(typeMistakes).map(key => {
                       const m = typeMistakes[key];
@@ -2899,7 +2907,7 @@
       const [problems, setProblems] = useState([]);
       const [showPrintMessage, setShowPrintMessage] = useState(false);
 
-      const isTwoCols = ['add', 'sub', 'mul', 'div', 'unit'].includes(unit);
+      const isTwoCols = ['add', 'sub', 'mul', 'div', 'unit', 'arith'].includes(unit);
 
       const generatePrint = useCallback(() => {
         const problemCount = isTwoCols ? 20 : 10;
@@ -2916,7 +2924,7 @@
 
       const unitLabels = { 
         add: 'たしざん', sub: 'ひき算', mul: 'かけ算', div: 'わり算', approx: 'がい数',
-        number_line: '数直線', length: '長さ', unit: '単位', clock: '時刻と時間', word_problem: '文章問題', fraction: '分数' 
+        number_line: '数直線', length: '長さ', unit: '単位', clock: '時刻と時間', word_problem: '文章問題', fraction: '分数', arith: '四則計算（＋－×÷）' 
       };
 
       const handlePrint = () => {
